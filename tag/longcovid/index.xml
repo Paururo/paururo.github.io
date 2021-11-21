@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>longcovid | Paula Ruiz Rodríguez</title>
+    <link>/tag/longcovid/</link>
+      <atom:link href="/tag/longcovid/index.xml" rel="self" type="application/rss+xml" />
+    <description>longcovid</description>
+    <generator>Wowchemy (https://wowchemy.com)</generator><language>en-us</language><copyright>@ **2021** Paula Ruiz-Rodriguez</copyright><lastBuildDate>Wed, 10 Nov 2021 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png</url>
+      <title>longcovid</title>
+      <link>/tag/longcovid/</link>
+    </image>
+    
+    <item>
+      <title>Persistent SARS-CoV-2 infection with repeated clinical recurrence in a patient with common variable immunodeficiency</title>
+      <link>/publication/cvd_longcovid/</link>
+      <pubDate>Wed, 10 Nov 2021 00:00:00 +0000</pubDate>
+      <guid>/publication/cvd_longcovid/</guid>
+      <description>&lt;div class=&#34;alert alert-note&#34;&gt;
+  &lt;div&gt;
+    Click the &lt;em&gt;Cite&lt;/em&gt; button above to get .bib reference to import into your reference management software
+  &lt;/div&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

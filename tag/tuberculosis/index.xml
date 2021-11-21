@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>tuberculosis | Paula Ruiz Rodríguez</title>
+    <link>/tag/tuberculosis/</link>
+      <atom:link href="/tag/tuberculosis/index.xml" rel="self" type="application/rss+xml" />
+    <description>tuberculosis</description>
+    <generator>Wowchemy (https://wowchemy.com)</generator><language>en-us</language><copyright>@ **2021** Paula Ruiz-Rodriguez</copyright><lastBuildDate>Mon, 08 Feb 2021 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png</url>
+      <title>tuberculosis</title>
+      <link>/tag/tuberculosis/</link>
+    </image>
+    
+    <item>
+      <title>Phylogenomics of Mycobacterium africanum reveals a new lineage and a complex evolutionary history</title>
+      <link>/publication/tb_lineage9/</link>
+      <pubDate>Mon, 08 Feb 2021 00:00:00 +0000</pubDate>
+      <guid>/publication/tb_lineage9/</guid>
+      <description>&lt;div class=&#34;alert alert-note&#34;&gt;
+  &lt;div&gt;
+    Click the &lt;em&gt;Cite&lt;/em&gt; button above to get .bib reference to import into your reference management software
+  &lt;/div&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
