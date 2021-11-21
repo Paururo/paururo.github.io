@@ -5,12 +5,39 @@
     <link>/</link>
       <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     <description>Paula Ruiz Rodríguez</description>
-    <generator>Wowchemy (https://wowchemy.com)</generator><language>en-us</language><copyright>@ **2021** Paula Ruiz-Rodriguez</copyright><lastBuildDate>Tue, 16 Nov 2021 00:00:00 +0000</lastBuildDate>
+    <generator>Wowchemy (https://wowchemy.com)</generator><language>en-us</language><copyright>@ **2021** Paula Ruiz-Rodriguez</copyright><lastBuildDate>Sun, 21 Nov 2021 00:00:00 +0000</lastBuildDate>
     <image>
-      <url>/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png</url>
+      <url>/media/icon_hu57fb7dd00b5f0ef0ed156674366136b3_109553_512x512_fill_lanczos_center_3.png</url>
       <title>Paula Ruiz Rodríguez</title>
       <link>/</link>
     </image>
+    
+    <item>
+      <title>Bacteriophage for I2SysBio</title>
+      <link>/project/bacteriophage/</link>
+      <pubDate>Sun, 21 Nov 2021 00:00:00 +0000</pubDate>
+      <guid>/project/bacteriophage/</guid>
+      <description>&lt;p&gt;Bacteriophage made by I2SysBio for the 2021 Christmas bookmark&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Graphical abstract of Lineage 9</title>
+      <link>/project/graphical_abstract_lineage9/</link>
+      <pubDate>Sun, 21 Nov 2021 00:00:00 +0000</pubDate>
+      <guid>/project/graphical_abstract_lineage9/</guid>
+      <description>&lt;p&gt;A graphical abstract of: Phylogenomics of &lt;em&gt;Mycobacterium africanum&lt;/em&gt; reveals a new lineage and a complex evolutionary history for ESM contest&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Icon Webpage</title>
+      <link>/project/web_page_icon/</link>
+      <pubDate>Sun, 21 Nov 2021 00:00:00 +0000</pubDate>
+      <guid>/project/web_page_icon/</guid>
+      <description>&lt;p&gt;Icon for this webpage&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Evolutionary and Phenotypic Characterization of Two Spike Mutations in European Lineage 20E of SARS-CoV-2</title>
