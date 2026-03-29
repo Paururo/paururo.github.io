@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPubFilters();
   initStatBubbles();
   initSpeedControl();
+  renderBlogPosts();
   fetchPublications();
   fetchGitHubRepos();
 });
@@ -1744,6 +1745,54 @@ function initTickerDrag(track) {
   track.addEventListener('touchstart', (e) => pointerDown(e.touches[0].clientX), { passive: true });
   document.addEventListener('touchmove', (e) => { if (s.dragging) pointerMove(e.touches[0].clientX); }, { passive: true });
   document.addEventListener('touchend', pointerUp);
+}
+
+// ==================== BLOG POSTS ====================
+const BLOG_POSTS = [
+  {
+    date: '2026-03-24',
+    category: 'Preprint',
+    title: 'Pathotypr preprint is out on bioRxiv!',
+    body: 'Our preprint <em>&ldquo;Pathotypr: harmonised MTBC lineage assignment and resistance-associated variant detection for genomic surveillance&rdquo;</em> is now available on bioRxiv. Pathotypr is an alignment-free tool that supports all 14 currently recognised MTBC lineages and WHO catalogue-based resistance calling, processing ~1 sample/second. Validated on 88,071 samples with 100% lineage concordance and high resistance prediction performance.',
+    links: [
+      { url: 'https://www.biorxiv.org/content/10.64898/2026.03.24.714002v1', label: 'Read on bioRxiv', icon: 'fas fa-file-alt' },
+      { url: 'https://github.com/PathoGenOmics-Lab/pathotypr', label: 'Source code', icon: 'fab fa-github' },
+    ],
+  },
+  {
+    date: '2026-03-14',
+    category: 'Update',
+    title: 'Welcome to my new portfolio',
+    body: "I've redesigned my personal website with a fresh, clean look. Here you'll find my publications, projects, and interactive experiments. Stay tuned for updates on my research and bioinformatics adventures.",
+  },
+];
+
+function renderBlogPosts() {
+  const container = document.getElementById('blogList');
+  if (!container) return;
+
+  container.innerHTML = BLOG_POSTS.map(post => {
+    const d = new Date(post.date + 'T00:00:00');
+    const day = d.getDate();
+    const monthYear = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const linksHTML = (post.links || []).map(l =>
+      `<a href="${l.url}" target="_blank" class="btn-pub"><i class="${l.icon}"></i> ${l.label}</a>`
+    ).join('');
+
+    return `
+      <article class="blog-post anim">
+        <div class="blog-date">
+          <span class="blog-day">${day}</span>
+          <span class="blog-month">${monthYear}</span>
+        </div>
+        <div class="blog-content">
+          <span class="blog-category">${post.category}</span>
+          <h3>${post.title}</h3>
+          <p>${post.body}</p>
+          ${linksHTML ? `<div class="blog-links">${linksHTML}</div>` : ''}
+        </div>
+      </article>`;
+  }).join('');
 }
 
 // ==================== GITHUB REPOS ====================
