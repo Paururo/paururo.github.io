@@ -1751,11 +1751,9 @@ const GH_USER = 'Paururo';
 const GH_LAB = 'PathoGenOmics-Lab';
 const GH_LAB_API = `https://api.github.com/orgs/${GH_LAB}/repos?sort=updated&per_page=100`;
 const GH_USER_API = `https://api.github.com/users/${GH_USER}/repos?sort=updated&per_page=100`;
-// Lab repos where @paururo has contributed
-const GH_MY_LAB_REPOS = ['pathotypr', 'snpick', 'distree', 'get_MNV', 'mycolorsTB', 'fstic', 'getNCBImetadata', 'SARStools', 'CrossInfectMTB'];
 // Personal repos to exclude
 const GH_EXCLUDE = ['paururo.github.io'];
-const GH_CACHE_KEY = 'gh_paururo_repos';
+const GH_CACHE_KEY = 'gh_paururo_repos_v2';
 
 const LANG_COLORS = {
   Python: '#3572A5', R: '#198CE7', HTML: '#E34C26',
@@ -1915,45 +1913,53 @@ async function fetchGitHubRepos() {
   // Clear legacy cache keys
   localStorage.removeItem('gh_repos');
   localStorage.removeItem('gh_lab_repos');
+  localStorage.removeItem('gh_paururo_repos');
 
   const cached = cacheGet(GH_CACHE_KEY);
   if (cached) {
     renderGitHubRepos(cached);
-    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], fetchGitHubRepos);
+    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], () => {
+      cacheInvalidate(GH_CACHE_KEY);
+      loading.style.display = '';
+      document.getElementById('ghLayout').style.display = 'none';
+      fetchGitHubRepos();
+    });
     return;
   }
 
   try {
-    const labSet = new Set(GH_MY_LAB_REPOS.map(n => n.toLowerCase()));
     const excludeSet = new Set(GH_EXCLUDE.map(n => n.toLowerCase()));
+    const userLower = GH_USER.toLowerCase();
     let labRepos = [];
     let userRepos = [];
 
-    // Fetch lab repos (only the ones @paururo contributed to)
+    // 1. Fetch ALL lab org repos
     try {
       const res = await fetch(GH_LAB_API);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) labRepos = data.filter(r => !r.fork && !r.archived && labSet.has(r.name.toLowerCase()));
+        if (Array.isArray(data)) labRepos = data.filter(r => !r.fork && !r.archived);
       }
     } catch { /* fall through */ }
 
-    // Fallback for lab repos: fetch individually
-    if (labRepos.length === 0) {
-      const results = await Promise.all(
-        GH_MY_LAB_REPOS.map(name =>
-          fetch(`https://api.github.com/repos/${GH_LAB}/${name}`).catch(() => null)
-        )
-      );
-      for (const res of results) {
-        if (res && res.ok) {
-          const repo = await res.json();
-          if (repo && repo.name) labRepos.push(repo);
+    // 2. Check contributors for each lab repo to find ones @paururo contributed to.
+    //    Batch requests with small delays to stay within GitHub rate limits.
+    const myLabRepos = [];
+    for (const repo of labRepos) {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${GH_LAB}/${repo.name}/contributors?per_page=30`);
+        if (res.ok) {
+          const contribs = await res.json();
+          if (Array.isArray(contribs) && contribs.some(c => c.login.toLowerCase() === userLower)) {
+            myLabRepos.push(repo);
+          }
         }
-      }
+        // Small delay between contributor checks to avoid hitting rate limits
+        await new Promise(r => setTimeout(r, 120));
+      } catch { /* skip repo */ }
     }
 
-    // Fetch personal repos
+    // 3. Fetch personal repos
     try {
       const res = await fetch(GH_USER_API);
       if (res.ok) {
@@ -1962,10 +1968,10 @@ async function fetchGitHubRepos() {
       }
     } catch { /* ignore */ }
 
-    // Merge and deduplicate
+    // 4. Merge and deduplicate
     const seen = new Set();
     const repos = [];
-    for (const r of [...labRepos, ...userRepos]) {
+    for (const r of [...myLabRepos, ...userRepos]) {
       const key = r.full_name.toLowerCase();
       if (!seen.has(key)) { seen.add(key); repos.push(r); }
     }
@@ -1975,7 +1981,12 @@ async function fetchGitHubRepos() {
     const sorted = repos.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     cacheSet(GH_CACHE_KEY, sorted);
     renderGitHubRepos(sorted);
-    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], fetchGitHubRepos);
+    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], () => {
+      cacheInvalidate(GH_CACHE_KEY);
+      loading.style.display = '';
+      document.getElementById('ghLayout').style.display = 'none';
+      fetchGitHubRepos();
+    });
   } catch (err) {
     console.error('GitHub fetch error:', err);
     loading.innerHTML = `<p style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Could not load repositories.<br><a href="https://github.com/${GH_USER}" target="_blank">View on GitHub directly</a></p>`;
