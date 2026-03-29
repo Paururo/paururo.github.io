@@ -2,7 +2,7 @@
 const ORCID_ID = '0000-0003-0727-5974';
 const ORCID_API = `https://pub.orcid.org/v3.0/${ORCID_ID}/works`;
 const S2_API = 'https://api.semanticscholar.org/graph/v1/paper/DOI:';
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 1 day
 
 // ==================== CACHE HELPERS ====================
 function cacheGet(key) {
