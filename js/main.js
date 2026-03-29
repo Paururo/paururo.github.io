@@ -1752,7 +1752,7 @@ const GH_LAB = 'PathoGenOmics-Lab';
 const GH_LAB_API = `https://api.github.com/orgs/${GH_LAB}/repos?sort=updated&per_page=100`;
 const GH_USER_API = `https://api.github.com/users/${GH_USER}/repos?sort=updated&per_page=100`;
 // Lab repos where @paururo has contributed
-const GH_MY_LAB_REPOS = ['snpick', 'distree', 'get_MNV', 'mycolorsTB', 'fstic', 'getNCBImetadata', 'SARStools', 'CrossInfectMTB'];
+const GH_MY_LAB_REPOS = ['pathotypr', 'snpick', 'distree', 'get_MNV', 'mycolorsTB', 'fstic', 'getNCBImetadata', 'SARStools', 'CrossInfectMTB'];
 // Personal repos to exclude
 const GH_EXCLUDE = ['paururo.github.io'];
 const GH_CACHE_KEY = 'gh_paururo_repos';
