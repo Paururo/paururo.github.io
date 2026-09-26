@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- Social preview card (1200x630). To regenerate assets/img/og-card.png,
+     serve the repository root and screenshot this page at 1200x630, e.g.
+     python3 scripts/build-og-card.py -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>og card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,100,1&family=DM+Sans:opsz,wght@9..40,400..700&family=Caveat:wght@600..700&family=Pixelify+Sans:wght@400..600&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative; color: #22262A; font-family: 'DM Sans', sans-serif;
+    background-color: #F6F6F2;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .left { position: absolute; left: 72px; top: 78px; width: 640px; }
+  .hello { font-family: 'Caveat', cursive; font-weight: 700; font-size: 46px; color: #C54230; transform: rotate(-3deg); transform-origin: left; display: inline-block; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 92px; line-height: 0.96; letter-spacing: -0.03em; font-variation-settings: 'SOFT' 100, 'WONK' 1; margin-top: 4px; }
+  h1 span { display: block; padding-bottom: 12px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 14' preserveAspectRatio='none'%3E%3Cpath d='M3 9 C 60 3 120 12 180 6 S 270 9 297 5' fill='none' stroke='%23D0503F' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left bottom / 100% 14px; width: max-content; }
+  .role { margin-top: 26px; font-size: 29px; font-weight: 600; }
+  .role mark { color: inherit; padding: 0 4px; background: linear-gradient(100deg, transparent 2%, rgba(208,80,63,.26) 4%, rgba(208,80,63,.26) 96%, transparent 98%) 0 72% / 100% 44% no-repeat; }
+  .role mark.sage { background-image: linear-gradient(100deg, transparent 2%, rgba(62,155,90,.3) 4%, rgba(62,155,90,.3) 96%, transparent 98%); }
+  .affil { margin-top: 10px; font-size: 22px; color: #62584F; }
+  .genes { display: flex; gap: 5px; margin-top: 30px; }
+  .gene { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 34px; padding: 0 24px 0 13px; font-family: 'Pixelify Sans', monospace; font-variant-ligatures: none; font-size: 17px; }
+  .gene::before, .gene::after { content: ''; position: absolute; z-index: -1; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
+  .gene::before { inset: 0; background: var(--c); }
+  .gene::after { inset: 2px 3px 2px 2px; background: color-mix(in srgb, var(--c) 24%, #FFFDF7); }
+  .polaroid { position: absolute; right: 70px; top: 92px; width: 400px; padding: 14px 14px 12px; background: #FFFDF8; transform: rotate(3deg); box-shadow: 0 22px 34px -20px rgba(60,40,20,.6); }
+  .polaroid img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .polaroid p { font-family: 'Caveat', cursive; font-weight: 700; font-size: 29px; text-align: center; margin-top: 8px; }
+  .tape { position: absolute; width: 120px; height: 32px; background: rgba(224,160,48,.45); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 6px, transparent 6px 12px); }
+  .tape.l { top: -16px; left: -22px; transform: rotate(-24deg); }
+  .tape.r { top: -14px; right: -24px; transform: rotate(28deg); }
+  .ruler { position: absolute; left: 72px; right: 72px; bottom: 44px; height: 30px; border-bottom: 2px solid #2E2925; }
+  .ruler i { position: absolute; bottom: -2px; width: 2px; height: 7px; background: #2E2925; opacity: .5; }
+  .walker { position: absolute; bottom: 0; left: 610px; }
+  .url { position: absolute; right: 0; bottom: 8px; font-family: 'Pixelify Sans', monospace; font-size: 18px; color: #62584F; }
+  .doodle { position: absolute; fill: none; stroke: #2E2925; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <span class="hello">hi, I'm</span>
+    <h1>Paula<span>Ruiz-Rodriguez</span></h1>
+    <p class="role">Bioinformatician reading <mark><em>tuberculosis</em></mark> and <mark class="sage">SARS-CoV-2</mark> genomes</p>
+    <p class="affil">PathoGenOmics Lab &middot; I2SysBio, CSIC and Univ. of Valencia</p>
+    <div class="genes">
+      <span class="gene" style="--c:#D0503F">TB lineages</span>
+      <span class="gene" style="--c:#3E9B5A">spike evolution</span>
+      <span class="gene" style="--c:#3F6FC4">rust tools</span>
+      <span class="gene" style="--c:#E0A030">drawing</span>
+    </div>
+  </div>
+  <figure class="polaroid">
+    <span class="tape l"></span><span class="tape r"></span>
+    <img src="../assets/img/web/portrait-960.webp" alt="">
+    <p>that's me, in thesis mode</p>
+  </figure>
+  <svg class="doodle" style="left:700px;top:52px;width:54px" viewBox="0 0 70 110"><path d="M35 6 L55 18 L55 42 L35 54 L15 42 L15 18 Z M15 18 L35 30 L55 18 M35 30 V54 M31 54 V84 M39 54 V84 M31 60 H39 M31 66 H39 M31 72 H39 M31 78 H39 M24 84 H46 M26 84 L14 104 M31 84 L24 106 M39 84 L46 106 M44 84 L56 104"/></svg>
+  <svg class="doodle" style="right:30px;top:420px;width:60px;stroke:#3E9B5A" viewBox="0 0 64 64"><circle cx="32" cy="32" r="15"/><path d="M32 17V9M32 55v-8M17 32H9M55 32h-8M21 21l-5-5M48 48l-5-5M21 43l-5 5M48 16l-5 5"/><circle cx="32" cy="7" r="2.5"/><circle cx="32" cy="57" r="2.5"/><circle cx="7" cy="32" r="2.5"/><circle cx="57" cy="32" r="2.5"/></svg>
+  <div class="ruler">
+    <i style="left:0"></i><i style="left:10%"></i><i style="left:20%"></i><i style="left:30%"></i><i style="left:40%"></i><i style="left:50%"></i><i style="left:60%"></i><i style="left:70%"></i><i style="left:80%"></i><i style="left:90%"></i><i style="left:100%"></i>
+    <span class="walker" data-sprite="bacillus" data-scale="3"></span>
+    <span class="url">paururo.github.io</span>
+  </div>
+  <script src="../js/art.js"></script>
+  <script>fillSprites();</script>
+</body>
+</html>
