@@ -986,7 +986,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .polar-hit { position: absolute; left: 24%; top: 16%; width: 54%; height: 78%; border-radius: 45%; pointer-events: auto; }
 .polar.following .polar-hit { pointer-events: none; }
 .polar:focus-visible { outline: 2.5px dashed var(--terra-ink); outline-offset: -6px; border-radius: 14px; }
-.polar-sprite { display: block; width: 117px; height: 107px; background: url(../assets/img/polar.png) 0 0 / 6084px 107px no-repeat; image-rendering: pixelated; }
+.polar-sprite { display: block; width: 117px; height: 107px; background: url(../assets/img/polar.png?v=9fda2ccc6c) 0 0 / 6084px 107px no-repeat; image-rendering: pixelated; }
 /* visiting the plush bacillus on the ruler, above the top bar, out of the way of clicks */
 .polar.up-front { z-index: 101; }
 .polar.up-front .polar-hit { pointer-events: none; }

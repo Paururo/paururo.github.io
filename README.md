@@ -42,6 +42,15 @@ Then open <http://localhost:8000>.
 
 ## Generated files
 
+After changing anything under `css/` or `js/`, or Polar's sprite sheet, stamp
+the links in `index.html` with the new file hashes. Browsers keep these files
+for ten minutes, and without the stamps a phone can pair the new page with the
+code of the previous version (`--check` only reports stale stamps):
+
+```bash
+python3 scripts/stamp-assets.py
+```
+
 After changing the page, rebuild the single-file copy:
 
 ```bash

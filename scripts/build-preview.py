@@ -28,14 +28,16 @@ def data_uri(path):
 def main():
     html = read('index.html')
     # the stylesheet moves next to the page, so its asset paths lose the ../
-    css = read('css/style.css').replace('url(../assets/', 'url(assets/')
-    html = html.replace('<link rel="stylesheet" href="css/style.css">', '<style>\n' + css + '\n</style>')
+    # and the cache stamps (a file opened from disk has no cache to outwit)
+    css = re.sub(r'\?v=[0-9a-f]+', '', read('css/style.css')).replace('url(../assets/', 'url(assets/')
+    html = re.sub(r'<link rel="stylesheet" href="css/style\.css(?:\?v=[0-9a-f]+)?">',
+                  lambda m: '<style>\n' + css + '\n</style>', html)
 
     def inline_script(match):
         code = read(match.group(1))
         assert '</script' not in code, match.group(1)
         return '<script>\n' + code + '\n</script>'
-    html = re.sub(r'<script src="(js/[\w.-]+\.js)"></script>', inline_script, html)
+    html = re.sub(r'<script src="(js/[\w.-]+\.js)(?:\?v=[0-9a-f]+)?"></script>', inline_script, html)
 
     for path in INLINE_IMAGES:
         html = html.replace(f'src="{path}"', f'src="{data_uri(path)}"')
