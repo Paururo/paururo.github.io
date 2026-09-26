@@ -508,7 +508,10 @@ function initBench() {
   Bus.on('polar:landed', ({ el }) => {
     if (!el || !bench.contains(el)) return;
     const b = find('bacillus');
-    if (b) { bubble(b, 'hi Polar!', 1600); heart(b); faceFor(b, 'happy', 1600); }
+    if (!b) return;
+    bubble(b, 'hi Polar!', 1600); heart(b);
+    // a smile, unless its mask is on after a sneeze: that stays on
+    if (!(b.maskUntil > now())) faceFor(b, 'happy', 1600);
   });
   new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   window.addEventListener('resize', () => {

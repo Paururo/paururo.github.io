@@ -12,8 +12,9 @@ Plain HTML, CSS and JavaScript: no build step, no framework.
 | `js/content.js` | **Everything you edit**: papers I led, tools, news, career steps, helix labels |
 | `js/art.js` | Drawings: pixel sprites, the koi pond behind the page and its 3D shows, helices, the career chromosome, the genome ruler, the tree of the fourteen TB lineages |
 | `js/play.js` | The desk in *Off the bench* (keyboard, the console under it, the monitor, a Bambu Lab X1C, lamp, mug, microbes), the coffee on the letter, the pond tricks |
-| `js/polar.js` | Polar, the lovebird: my shoulder in the photo, real perches, the desk, the ruler with the plush bacillus |
+| `js/polar.js` | Polar, the lovebird: my shoulder in the photo, real perches, the desk, the ruler with the plush bacillus, his coconut in the top right corner and the half coconut on the desk |
 | `assets/img/polar.png` | Polar's poses, generated (see below) |
+| `assets/img/coco.png`, `assets/img/coco-half.png` | His two coconuts, generated (see below) |
 | `js/main.js` | Behaviour and live data |
 | `i2sysbio-networks.html` | The I2SysBio researchers map (standalone) |
 | `preview.html` | Single-file copy of the page, generated |
@@ -70,4 +71,11 @@ the pose names that go in `POLAR_POSES` in `js/polar.js`:
 
 ```bash
 python3 scripts/build-polar.py path/to/polar-character-sheet.png
+```
+
+His coconuts are drawn at his scale by a script too; it prints the points
+that go in `COCO_*` and `BOWL_*` in `js/polar.js`:
+
+```bash
+python3 scripts/build-coco.py
 ```
