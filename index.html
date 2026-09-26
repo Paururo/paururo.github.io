@@ -3,347 +3,547 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paula Ruiz-Rodriguez | Bioinformatician</title>
-  <meta name="description" content="Paula Ruiz-Rodriguez - Bioinformatician at PathoGenOmics Lab, I2SysBio. Research on SARS-CoV-2 and Mycobacterium tuberculosis genomics.">
+  <title>Paula Ruiz-Rodriguez | Bioinformatician in pathogen genomics</title>
+  <meta name="description" content="Paula Ruiz-Rodriguez is a bioinformatician and PhD candidate at the PathoGenOmics Lab, I2SysBio (CSIC and University of Valencia). She studies how Mycobacterium tuberculosis and SARS-CoV-2 evolve and spread, builds open-source genomics tools, and draws.">
   <meta name="author" content="Paula Ruiz-Rodriguez">
-  <meta name="theme-color" content="#D97757">
-  <meta property="og:title" content="Paula Ruiz-Rodriguez | Bioinformatician">
-  <meta property="og:description" content="Decoding pathogen evolution, one genome at a time. Bioinformatician at PathoGenOmics Lab, I2SysBio.">
-  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#F6F6F2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#150A26" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://paururo.github.io/">
+  <meta property="og:title" content="Paula Ruiz-Rodriguez | Bioinformatician in pathogen genomics">
+  <meta property="og:description" content="Decoding pathogen evolution, one genome at a time. Tuberculosis and SARS-CoV-2 genomics, open-source tools and scientific drawings.">
+  <meta property="og:type" content="profile">
+  <meta property="og:url" content="https://paururo.github.io/">
+  <meta property="og:image" content="https://paururo.github.io/assets/img/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Paula Ruiz-Rodriguez, bioinformatician in pathogen genomics">
+  <meta property="profile:first_name" content="Paula">
+  <meta property="profile:last_name" content="Ruiz-Rodriguez">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@paururo">
   <link rel="icon" type="image/png" href="assets/favicons/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/favicons/favicon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..700,100,1;1,9..144,400..700,100,1&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Caveat:wght@500..700&family=Pixelify+Sans:wght@400..600&display=swap">
   <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Paula Ruiz-Rodriguez",
+    "url": "https://paururo.github.io/",
+    "image": "https://paururo.github.io/assets/img/avatar.jpg",
+    "jobTitle": "Bioinformatician",
+    "description": "Bioinformatician and PhD candidate working on the evolutionary genomics of Mycobacterium tuberculosis and SARS-CoV-2, on open-source tools for pathogen genomics, and on scientific illustration.",
+    "email": "mailto:paula.ruiz.rodriguez@csic.es",
+    "affiliation": {
+      "@type": "ResearchOrganization",
+      "name": "Institute for Integrative Systems Biology (I2SysBio), CSIC and University of Valencia",
+      "address": { "@type": "PostalAddress", "addressLocality": "Valencia", "addressCountry": "ES" }
+    },
+    "alumniOf": { "@type": "CollegeOrUniversity", "name": "University of Valencia" },
+    "knowsAbout": ["Bioinformatics", "Pathogen genomics", "Mycobacterium tuberculosis", "SARS-CoV-2", "Phylogenomics", "Genomic surveillance", "Drug resistance", "Rust", "Nextflow", "Scientific illustration"],
+    "sameAs": [
+      "https://orcid.org/0000-0003-0727-5974",
+      "https://scholar.google.es/citations?user=hebFDXQAAAAJ",
+      "https://github.com/Paururo",
+      "https://www.linkedin.com/in/paururo",
+      "https://bsky.app/profile/paururo.bsky.social",
+      "https://twitter.com/paururo",
+      "https://www.researchgate.net/profile/Paula-Ruiz-Rodriguez"
+    ]
+  }
+  </script>
 </head>
 <body>
 
-  <!-- Canvas Background -->
-  <canvas id="bioCanvas"></canvas>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <!-- Scroll Progress -->
-  <div class="scroll-progress" id="scrollProgress"></div>
+  <!-- Pixel koi swimming behind the page, each carrying a nucleotide -->
+  <canvas id="bioCanvas" aria-hidden="true"></canvas>
 
-  <!-- Dynamic Ticker -->
-  <div class="dna-ticker" id="dnaTicker">
-    <div class="dna-ticker-track" id="tickerTrack"></div>
-  </div>
-
-  <!-- Navigation -->
-  <nav class="navbar" id="navbar">
-    <div class="nav-brand">
-      <img src="assets/img/logo.png" alt="paururo logo" class="nav-logo-img">
-      <span class="nav-name">Paula Ruiz-Rodriguez</span>
-    </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
-      <span></span><span></span><span></span>
-    </button>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="#about" class="nav-link active" data-tab="about">About</a></li>
-      <li><a href="#publications" class="nav-link" data-tab="publications">Publications</a></li>
-      <li><a href="#projects" class="nav-link" data-tab="projects">Projects</a></li>
-      <li><a href="#lab" class="nav-link" data-tab="lab">Lab</a></li>
-      <li><a href="#blog" class="nav-link" data-tab="blog">Blog</a></li>
-      <li><a href="#contact" class="nav-link" data-tab="contact">Contact</a></li>
-    </ul>
-    <div class="nav-controls">
-      <div class="speed-control" id="speedControl">
-        <button class="speed-toggle" id="speedToggle" aria-label="Animation speed"><i class="fas fa-tachometer-alt"></i></button>
-        <div class="speed-panel" id="speedPanel">
-          <input type="range" class="speed-slider" id="speedSlider" min="0" max="200" value="50" step="10">
-          <span class="speed-label" id="speedLabel">0.5x</span>
+  <!-- ==================== TOP BAR ==================== -->
+  <header class="topbar" id="navbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#about" aria-label="Paula Ruiz-Rodriguez, back to the top">
+        <img src="assets/img/logo.png" alt="" width="40" height="40">
+        <span>paururo</span>
+      </a>
+      <nav aria-label="Sections">
+        <ul class="nav-links" id="navLinks">
+          <li><a href="#about" class="nav-link">about</a></li>
+          <li><a href="#research" class="nav-link">research</a></li>
+          <li><a href="#background" class="nav-link">background</a></li>
+          <li><a href="#publications" class="nav-link">publications</a></li>
+          <li><a href="#tools" class="nav-link">tools</a></li>
+          <li><a href="#drawings" class="nav-link">drawings</a></li>
+          <li><a href="#hobbies" class="nav-link">hobbies</a></li>
+          <li><a href="#news" class="nav-link">news</a></li>
+          <li><a href="#contact" class="nav-link">contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-controls">
+        <div class="speed-control" id="speedControl">
+          <button class="icon-btn" id="speedToggle" aria-label="Koi pond: speed and tricks" aria-expanded="false" aria-controls="speedPanel"><i class="fas fa-fish" aria-hidden="true"></i></button>
+          <div class="speed-panel" id="speedPanel">
+            <div class="speed-row">
+              <span class="speed-name">koi</span>
+              <input type="range" class="speed-slider" id="speedSlider" min="0" max="200" value="50" step="10" aria-label="Animation speed">
+              <span class="speed-label px" id="speedLabel">0.5x</span>
+            </div>
+            <div class="pond-tricks" role="group" aria-label="Koi tricks">
+              <button type="button" class="px-btn" data-pond="feed">feed</button>
+              <button type="button" class="px-btn" data-pond="dna">DNA</button>
+              <button type="button" class="px-btn" data-pond="bacillus">bacillus</button>
+              <button type="button" class="px-btn" data-pond="virus">virus</button>
+              <button type="button" class="px-btn" data-pond="plasmid">plasmid</button>
+            </div>
+          </div>
         </div>
+        <button class="icon-btn" id="darkToggle" aria-label="Toggle dark mode" aria-pressed="false"><i class="fas fa-moon" aria-hidden="true"></i></button>
+        <button class="icon-btn nav-toggle" id="navToggle" aria-label="Open the section menu" aria-expanded="false" aria-controls="navLinks"><i class="fas fa-bars" aria-hidden="true"></i></button>
       </div>
-      <button class="dark-toggle" id="darkToggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
     </div>
-  </nav>
+    <!-- The page as a genome: sections are features on a ruler -->
+    <div class="genome-ruler" id="genomeRuler" aria-hidden="true">
+      <div class="ruler-track"></div>
+      <div class="ruler-walker"></div>
+    </div>
+  </header>
 
-  <!-- Main Content -->
-  <main class="main-content">
+  <main id="main">
 
     <!-- ==================== ABOUT ==================== -->
-    <section class="tab-panel active" id="about">
-
-      <!-- Hero -->
-      <div class="hero anim">
-        <div class="hero-profile">
-          <div class="hero-photo-wrapper">
-            <img src="assets/img/avatar.jpg" alt="Paula Ruiz-Rodriguez" class="hero-photo">
+    <section id="about" class="sec sec--hero" data-feature="about">
+      <div class="wrap hero">
+        <div class="hero-text">
+          <p class="hello">hi, I'm</p>
+          <h1 class="hero-name">Paula <span class="nowrap">Ruiz-Rodriguez</span></h1>
+          <p class="hero-lede">I'm a bioinformatician who reads genomes to understand how <mark class="hl hl--terra"><em>tuberculosis</em></mark> and <mark class="hl hl--sage">SARS-CoV-2</mark> evolve, spread and adapt to their hosts. I also build <mark class="hl hl--ochre">open-source tools</mark>, and I draw.</p>
+          <p class="hero-affil">PhD candidate at the <strong>PathoGenOmics Lab</strong>, I2SysBio (CSIC and University of Valencia), in Valencia, Spain.</p>
+          <p class="hero-now"><span class="px-tag">now</span><span>Writing up my PhD thesis, <em>Evolutionary genomics of pathogen diversity in Mycobacterium tuberculosis and SARS-CoV-2</em>.</span></p>
+          <div class="hero-cta">
+            <a href="#research" class="btn btn--ink">see what I work on <i class="fas fa-arrow-down" aria-hidden="true"></i></a>
+            <a href="mailto:paula.ruiz.rodriguez@csic.es" class="btn btn--paper">say hello</a>
           </div>
-          <div class="hero-badge">
-            <span class="badge-dot"></span>
-            Bioinformatician
-          </div>
+          <ul class="hero-links" aria-label="Profiles">
+            <li><a href="mailto:paula.ruiz.rodriguez@csic.es" title="Email" aria-label="Email"><i class="fas fa-envelope" aria-hidden="true"></i></a></li>
+            <li><a href="https://github.com/paururo" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub"><i class="fab fa-github" aria-hidden="true"></i></a></li>
+            <li><a href="https://scholar.google.es/citations?user=hebFDXQAAAAJ&amp;hl=es" target="_blank" rel="noopener" title="Google Scholar" aria-label="Google Scholar"><i class="ai ai-google-scholar" aria-hidden="true"></i></a></li>
+            <li><a href="https://orcid.org/0000-0003-0727-5974" target="_blank" rel="noopener" title="ORCID" aria-label="ORCID"><i class="ai ai-orcid" aria-hidden="true"></i></a></li>
+            <li><a href="https://bsky.app/profile/paururo.bsky.social" target="_blank" rel="noopener" title="Bluesky" aria-label="Bluesky"><i class="fab fa-bluesky" aria-hidden="true"></i></a></li>
+            <li><a href="https://www.linkedin.com/in/paururo" target="_blank" rel="noopener" title="LinkedIn" aria-label="LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a></li>
+            <li><a href="https://twitter.com/paururo" target="_blank" rel="noopener" title="Twitter" aria-label="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a></li>
+            <li><a href="https://www.researchgate.net/profile/Paula-Ruiz-Rodriguez" target="_blank" rel="noopener" title="ResearchGate" aria-label="ResearchGate"><i class="ai ai-researchgate" aria-hidden="true"></i></a></li>
+          </ul>
         </div>
-        <div class="hero-content">
-          <h1 class="hero-title">
-            Decoding pathogen evolution,
-            <span class="hero-title-accent">one genome at a time.</span>
-          </h1>
-          <p class="hero-subtitle">
-            I study the genes of the deadliest pathogens in the world &mdash; <strong>SARS-CoV-2</strong> and <strong><em>Mycobacterium tuberculosis</em></strong> &mdash; using bioinformatics and open-source methods at <strong>PathoGenOmics Lab</strong>, I2SysBio (CSIC &amp; University of Valencia).
-          </p>
-          <div class="hero-links">
-            <a href="mailto:paula.ruiz.rodriguez@csic.es" class="hero-link" title="Email"><i class="fas fa-envelope"></i></a>
-            <a href="https://bsky.app/profile/paururo.bsky.social" target="_blank" class="hero-link" title="Bluesky"><i class="fab fa-bluesky"></i></a>
-            <a href="https://www.linkedin.com/in/paururo" target="_blank" class="hero-link" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
-            <a href="https://twitter.com/paururo" target="_blank" class="hero-link" title="Twitter"><i class="fab fa-twitter"></i></a>
-            <a href="https://github.com/paururo" target="_blank" class="hero-link" title="GitHub"><i class="fab fa-github"></i></a>
-            <a href="https://scholar.google.es/citations?user=hebFDXQAAAAJ&hl=es" target="_blank" class="hero-link" title="Google Scholar"><i class="ai ai-google-scholar"></i></a>
-            <a href="https://orcid.org/0000-0003-0727-5974" target="_blank" class="hero-link" title="ORCID"><i class="ai ai-orcid"></i></a>
-            <a href="https://www.researchgate.net/profile/Paula-Ruiz-Rodriguez" target="_blank" class="hero-link" title="ResearchGate"><i class="ai ai-researchgate"></i></a>
-          </div>
+
+        <div class="hero-visual">
+          <span class="vc-sun" aria-hidden="true"></span>
+          <figure class="polaroid">
+            <span class="tape tape--l" aria-hidden="true"></span>
+            <span class="tape tape--r" aria-hidden="true"></span>
+            <div class="polaroid-photo">
+              <img src="assets/img/web/portrait-960.webp" alt="Portrait of Paula Ruiz-Rodriguez in a backwards cap, with a stepped pyramid behind her" width="960" height="720">
+              <svg class="face-ring" viewBox="0 0 100 75" preserveAspectRatio="none" aria-hidden="true"><path d="M55 5 C 76 4 84 22 82 40 C 80 60 66 72 52 71 C 36 70 27 56 28 38 C 29 20 40 7 58 7" pathLength="1"/></svg>
+            </div>
+            <figcaption>that's me, in thesis mode</figcaption>
+            <svg class="doodle doodle--phage" viewBox="0 0 70 110" aria-hidden="true"><path d="M35 6 L55 18 L55 42 L35 54 L15 42 L15 18 Z M15 18 L35 30 L55 18 M35 30 V54 M31 54 V84 M39 54 V84 M31 60 H39 M31 66 H39 M31 72 H39 M31 78 H39 M24 84 H46 M26 84 L14 104 M31 84 L24 106 M39 84 L46 106 M44 84 L56 104"/></svg>
+            <svg class="doodle doodle--virus" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="15"/><path d="M32 17V9M32 55v-8M17 32H9M55 32h-8M21 21l-5-5M48 48l-5-5M21 43l-5 5M48 16l-5 5"/><circle cx="32" cy="7" r="2.5"/><circle cx="32" cy="57" r="2.5"/><circle cx="7" cy="32" r="2.5"/><circle cx="57" cy="32" r="2.5"/><circle cx="14" cy="14" r="2.5"/><circle cx="50" cy="50" r="2.5"/><circle cx="14" cy="50" r="2.5"/><circle cx="50" cy="14" r="2.5"/></svg>
+            <span class="px-peek" data-sprite="bacillus" data-scale="3"></span>
+          </figure>
         </div>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-row anim">
-        <div class="stat-card" data-stat="pubs">
-          <span class="stat-value" id="statPubs">--</span>
-          <span class="stat-label">Publications</span>
-        </div>
-        <div class="stat-card" data-stat="citations">
-          <span class="stat-value" id="statCitations">--</span>
-          <span class="stat-label">Citations</span>
-        </div>
-        <div class="stat-card" data-stat="pathogens">
-          <span class="stat-value" id="statPathogens">--</span>
-          <span class="stat-label">Pathogens</span>
-        </div>
-        <div class="stat-card" data-stat="langs">
-          <span class="stat-value" id="statLangs">--</span>
-          <span class="stat-label">Languages</span>
-        </div>
+      <!-- Research lines as a feature track of gene arrows -->
+      <div class="wrap focus-track">
+        <span class="track-label">focus</span>
+        <ul class="genes" aria-label="Research topics">
+          <li><a class="gene" href="#research-tb" style="--c:var(--terra)">TB lineages</a></li>
+          <li><a class="gene" href="#research-tb" style="--c:var(--terra-soft)">drug resistance</a></li>
+          <li><a class="gene" href="#research-tb" style="--c:var(--terra)">host adaptation</a></li>
+          <li><a class="gene" href="#research-cov" style="--c:var(--sage)">spike evolution</a></li>
+          <li><a class="gene" href="#research-cov" style="--c:var(--sage-soft)">wastewater</a></li>
+          <li><a class="gene" href="#tools" style="--c:var(--blue)">rust tools</a></li>
+          <li><a class="gene" href="#tools" style="--c:var(--blue-soft)">pipelines</a></li>
+          <li><a class="gene" href="#drawings" style="--c:var(--ochre)">drawing</a></li>
+        </ul>
       </div>
 
-      <!-- About DNA cards -->
-      <div class="about-grid">
+      <!-- Live counters -->
+      <div class="wrap stats" aria-label="In numbers">
+        <div class="stat" data-stat="pubs" role="button" tabindex="0" aria-label="Publications, show details">
+          <span class="stat-value" id="statPubs">--</span><span class="stat-label">papers</span>
+        </div>
+        <div class="stat" data-stat="citations" role="button" tabindex="0" aria-label="Citations, show details">
+          <span class="stat-value" id="statCitations">--</span><span class="stat-label">citations</span>
+        </div>
+        <div class="stat" data-stat="downloads" role="button" tabindex="0" aria-label="Tool downloads, show details">
+          <span class="stat-value" id="statDownloads">--</span><span class="stat-label">tool downloads</span>
+        </div>
+        <div class="stat" data-stat="pathogens" role="button" tabindex="0" aria-label="Pathogens studied, show details">
+          <span class="stat-value" id="statPathogens">--</span><span class="stat-label">pathogens</span>
+        </div>
+        <div class="stat" data-stat="langs" role="button" tabindex="0" aria-label="Programming languages, show details">
+          <span class="stat-value" id="statLangs">--</span><span class="stat-label">languages</span>
+        </div>
+      </div>
+    </section>
 
-        <div class="dna-card anim expanded" data-expandable>
-          <div class="dna-card-header">
-            <span class="dna-strand-label" data-color="green"><i class="fas fa-flask"></i> Research</span>
-            <i class="fas fa-dna dna-header-icon"></i>
-            <span class="dna-strand-label" data-color="teal"><i class="fas fa-terminal"></i> Skills</span>
-            <i class="fas fa-chevron-up dna-card-toggle"></i>
+    <!-- ==================== RESEARCH ==================== -->
+    <section id="research" class="sec" data-feature="research">
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">01 &middot; research</span>
+          <h2>What I work on</h2>
+          <span class="sec-note">two pathogens, one thread</span>
+        </header>
+
+        <div class="research-intro">
+          <p class="big-lead">Tuberculosis and COVID-19 look like different problems, but their genomic data share a trap: much of what we can conclude is decided before any hypothesis is tested, by the reference genome we map to in tuberculosis and by which samples get sequenced in SARS-CoV-2. My work tries to measure those biases and build methods that hold up despite them.</p>
+          <figure class="topic-tree">
+            <div id="topicTree" class="topic-fan"></div>
+            <figcaption>the tuberculosis complex, fourteen lineages <span class="tree-credit">topology and colours from <a href="https://github.com/PathoGenOmics-Lab/mycolorsTB" target="_blank" rel="noopener">mycolorsTB</a></span></figcaption>
+          </figure>
+        </div>
+
+        <div class="cards">
+          <article class="card" id="research-tb" style="--c:var(--terra)">
+            <span class="card-px" data-sprite="bacillus" data-scale="2"></span>
+            <svg class="card-doodle" viewBox="0 0 62 62" aria-hidden="true"><rect x="8" y="22" width="42" height="18" rx="9"/><path d="M50 31c4 0 5 5 9 5M8 31c-3 0-4-4-7-4"/><circle cx="20" cy="31" r="2"/><circle cx="29" cy="28" r="1.5"/><circle cx="38" cy="33" r="2"/></svg>
+            <h3>Tuberculosis: lineages, resistance and hosts</h3>
+            <p>The <em>M. tuberculosis</em> complex is split into lineages that differ in where they circulate and which hosts they infect. I build tools that type lineages and resistance the same way across surveillance programmes, and I study how the match between strain and host changes the way macrophages respond to infection.</p>
+            <div class="chips">
+              <a class="chip" href="https://doi.org/10.64898/2026.03.24.714002" target="_blank" rel="noopener">Pathotypr, 2026</a>
+              <a class="chip" href="https://doi.org/10.1099/mgen.0.001826" target="_blank" rel="noopener">Host compatibility, 2026</a>
+              <a class="chip" href="https://doi.org/10.1099/mgen.0.000477" target="_blank" rel="noopener">Lineage 9, 2021</a>
+            </div>
+          </article>
+          <article class="card" id="research-cov" style="--c:var(--sage)">
+            <span class="card-px" data-sprite="virus" data-scale="2"></span>
+            <svg class="card-doodle" viewBox="0 0 62 62" aria-hidden="true"><circle cx="31" cy="31" r="13"/><path d="M31 18v-7M31 51v-7M18 31h-7M51 31h-7M22 22l-5-5M45 45l-5-5M22 40l-5 5M45 17l-5 5"/><circle cx="31" cy="9" r="2.4"/><circle cx="31" cy="53" r="2.4"/><circle cx="9" cy="31" r="2.4"/><circle cx="53" cy="31" r="2.4"/></svg>
+            <h3>SARS-CoV-2: evolution and surveillance</h3>
+            <p>From the first pandemic wave in Spain to Omicron, I have followed spike mutations that arise again and again and tested whether they matter. Lately I compare wastewater with clinical sequencing: hospital wastewater caught KP.3 about three months before routine clinical surveillance did.</p>
+            <div class="chips">
+              <a class="chip" href="https://doi.org/10.1128/mBio.02315-21" target="_blank" rel="noopener">mBio, 2021</a>
+              <a class="chip" href="https://doi.org/10.1371/journal.ppat.1010631" target="_blank" rel="noopener">PLOS Pathogens, 2022</a>
+              <a class="chip" href="https://doi.org/10.64898/2026.03.31.26346553" target="_blank" rel="noopener">Wastewater, 2026</a>
+            </div>
+          </article>
+          <article class="card" id="research-tools" style="--c:var(--blue)">
+            <span class="card-px" data-sprite="download" data-scale="2"></span>
+            <svg class="card-doodle" viewBox="0 0 62 62" aria-hidden="true"><rect x="6" y="12" width="50" height="38" rx="5"/><path d="M15 25l8 6-8 6M28 38h14"/></svg>
+            <h3>Open-source tools for pathogen genomics</h3>
+            <p>I write fast, low-memory command-line tools, mostly in Rust, and reproducible Nextflow and Snakemake pipelines. Six of them are on Bioconda, downloaded <span class="live-downloads" id="focusDownloads">about 7,000</span> times so far, and one R package is on CRAN.</p>
+            <div class="chips">
+              <a class="chip" href="#tools">browse the tools</a>
+              <a class="chip" href="https://github.com/PathoGenOmics-Lab" target="_blank" rel="noopener">PathoGenOmics-Lab</a>
+            </div>
+          </article>
+          <article class="card" id="research-drawing" style="--c:var(--ochre)">
+            <span class="card-px" data-sprite="star" data-scale="2"></span>
+            <svg class="card-doodle" viewBox="0 0 62 62" aria-hidden="true"><path d="M12 50 L40 12 L48 18 L20 56 Z M12 50 L10 58 L20 56 M36 18 L44 24"/><path d="M44 46 C 50 42 54 48 50 52 C 46 56 40 50 46 46"/></svg>
+            <h3>Science, drawn</h3>
+            <p>I also illustrate: graphical abstracts, outreach pieces for the institute and the logo at the top of this page. A clear figure is often what makes a genomics result travel beyond the people who already work on it.</p>
+            <div class="chips">
+              <a class="chip" href="#drawings">see the drawings</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="led-papers" id="work">
+          <h3 class="sub-head">Papers I led <span class="sub-note">first or co-first author</span></h3>
+          <ol class="notebook" id="selectedList"></ol>
+          <a class="more-link" href="#publications">all publications, live from ORCID <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== BACKGROUND ==================== -->
+    <section id="background" class="sec" data-feature="background">
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">02 &middot; background</span>
+          <h2>Background</h2>
+          <span class="sec-note">my career, as a chromosome</span>
+        </header>
+
+        <div class="chromosome-wrap">
+          <div class="chromosome" id="careerChromosome"></div>
+        </div>
+        <p class="hint chrom-hint" id="chromHint" hidden>swipe along the chromosome &rarr;</p>
+        <ol class="stops" id="careerStops"></ol>
+
+        <div class="helices">
+          <div class="helix-card expanded" data-expandable>
+            <div class="helix-head">
+              <button type="button" class="strand-label" style="--c:var(--sage)" aria-pressed="false">research</button>
+              <button type="button" class="strand-reset" aria-label="Show both strands"><i class="fas fa-dna" aria-hidden="true"></i></button>
+              <button type="button" class="strand-label" style="--c:var(--blue)" aria-pressed="false">skills</button>
+              <button type="button" class="helix-toggle" aria-expanded="true" aria-label="Collapse the research and skills helix"><i class="fas fa-chevron-up" aria-hidden="true"></i></button>
+            </div>
+            <div class="helix-body">
+              <div class="helix-canvas"><canvas id="dnaResearchSkills" role="img" aria-label="Double helix pairing research interests with skills"></canvas></div>
+            </div>
           </div>
-          <div class="dna-card-body">
-            <div class="dna-canvas-wrap">
-              <canvas id="dnaResearchSkills"></canvas>
+          <div class="helix-card expanded" data-expandable>
+            <div class="helix-head">
+              <button type="button" class="strand-label" style="--c:var(--terra)" aria-pressed="false">education</button>
+              <button type="button" class="strand-reset" aria-label="Show both strands"><i class="fas fa-dna" aria-hidden="true"></i></button>
+              <button type="button" class="strand-label" style="--c:var(--ochre)" aria-pressed="false">experience</button>
+              <button type="button" class="helix-toggle" aria-expanded="true" aria-label="Collapse the education and experience helix"><i class="fas fa-chevron-up" aria-hidden="true"></i></button>
+            </div>
+            <div class="helix-body">
+              <div class="helix-canvas"><canvas id="dnaEducationExp" role="img" aria-label="Double helix pairing education with experience"></canvas></div>
             </div>
           </div>
         </div>
-
-        <div class="dna-card anim expanded" data-expandable>
-          <div class="dna-card-header">
-            <span class="dna-strand-label" data-color="orange"><i class="fas fa-graduation-cap"></i> Education</span>
-            <i class="fas fa-dna dna-header-icon"></i>
-            <span class="dna-strand-label" data-color="purple"><i class="fas fa-briefcase"></i> Experience</span>
-            <i class="fas fa-chevron-up dna-card-toggle"></i>
-          </div>
-          <div class="dna-card-body">
-            <div class="dna-canvas-wrap">
-              <canvas id="dnaEducationExp"></canvas>
-            </div>
-          </div>
-        </div>
-
+        <p class="hint">drag a helix to spin it, click a node for details, or a strand name to isolate it</p>
       </div>
-
-      <!-- Career Timeline -->
-      <div class="career-timeline anim" data-expandable>
-        <div class="career-timeline-header">
-          <div class="career-tl-title">
-            <i class="fas fa-stream"></i>
-            <span>Career Journey</span>
-          </div>
-          <i class="fas fa-chevron-up dna-card-toggle"></i>
-        </div>
-        <div class="career-timeline-body">
-          <div class="tl-track" id="careerTrack">
-            <div class="tl-axis"></div>
-            <!-- JS will populate entries -->
-          </div>
-        </div>
-      </div>
-
     </section>
 
     <!-- ==================== PUBLICATIONS ==================== -->
-    <section class="tab-panel" id="publications">
-      <div class="section-header anim">
-        <div>
-          <h2 class="section-title">Publications</h2>
-          <p class="section-sub">Live from <a href="https://orcid.org/0000-0003-0727-5974" target="_blank">ORCID</a> &middot; Citations via <a href="https://www.semanticscholar.org/" target="_blank">Semantic Scholar</a></p>
+    <section id="publications" class="sec" data-feature="publications">
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">03 &middot; publications</span>
+          <h2>All publications</h2>
+          <span class="sec-note">live from <a href="https://orcid.org/0000-0003-0727-5974" target="_blank" rel="noopener">ORCID</a>, citations from <a href="https://www.semanticscholar.org/" target="_blank" rel="noopener">Semantic Scholar</a></span>
+        </header>
+
+        <div class="pub-meta-row">
+          <span class="count-pill" id="pubCountBadge"><b>--</b> papers</span>
+          <span class="count-pill" id="citCountBadge"><b>--</b> citations</span>
           <p class="cache-info" id="pubCacheInfo"></p>
         </div>
-        <div class="pub-stats">
-          <span class="pill" id="pubCountBadge"><i class="fas fa-file-alt"></i> <span>--</span> papers</span>
-          <span class="pill" id="citCountBadge"><i class="fas fa-quote-right"></i> <span>--</span> citations</span>
+
+        <!-- Papers as a genome-browser track: one block per paper, by year -->
+        <div class="papers-track-wrap">
+          <span class="track-label">papers</span>
+          <div class="papers-track" id="papersTrack"></div>
         </div>
-      </div>
 
-      <div class="pub-search-row">
-        <div class="pub-search-wrapper">
-          <i class="fas fa-search"></i>
-          <input type="text" class="pub-search" id="pubSearch" placeholder="Search publications...">
+        <div class="pub-controls">
+          <div class="pub-search-wrap">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="search" class="pub-search" id="pubSearch" placeholder="search titles and journals" aria-label="Search publications">
+          </div>
+          <button type="button" class="stamp-toggle" id="pubLedToggle" aria-pressed="false" title="Show only the papers I led as first or co-first author">first author</button>
         </div>
-      </div>
-      <div class="pub-filters" id="pubFilters"></div>
-      <div class="pub-keyword-filters" id="pubKeywords"></div>
-      <div class="pub-no-results" id="pubNoResults"><i class="fas fa-search"></i>No publications match your filters</div>
+        <p class="pub-status" id="pubStatus" aria-live="polite" hidden></p>
+        <p class="pub-no-results" id="pubNoResults">No publications match these filters.</p>
 
-      <div class="pub-loading" id="pubLoading">
-        <div class="loader"><span></span><span></span><span></span></div>
-        <p>Fetching publications...</p>
-      </div>
-
-      <div class="pub-layout" id="pubLayout" style="display:none;">
-        <div class="pub-list" id="pubList"></div>
-        <aside class="pub-sidebar" id="pubCharts">
-          <div class="pub-chart-card pub-chart-sticky">
-            <h4 class="pub-chart-title"><i class="fas fa-chart-bar"></i> Publications per year</h4>
-            <div class="pub-chart-bars" id="chartYearBars"></div>
-          </div>
-          <div class="pub-chart-card">
-            <h4 class="pub-chart-title"><i class="fas fa-tags"></i> Topic distribution</h4>
-            <div class="pub-chart-bars" id="chartTopicBars"></div>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- ==================== PROJECTS ==================== -->
-    <section class="tab-panel" id="projects">
-      <h2 class="section-title anim">Projects &amp; Code</h2>
-      <p class="section-sub anim"><a href="https://github.com/PathoGenOmics-Lab" target="_blank">PathoGenOmics-Lab</a> repositories &middot; Illustrations</p>
-      <p class="cache-info" id="ghCacheInfo"></p>
-
-      <h3 class="subsection-label anim"><i class="fab fa-github"></i> GitHub Repositories</h3>
-      <div class="gh-loading" id="ghLoading">
-        <div class="loader"><span></span><span></span><span></span></div>
-        <p>Loading repositories...</p>
-      </div>
-      <div class="gh-filters" id="ghFilters" style="display:none;"></div>
-      <div class="gh-layout" id="ghLayout" style="display:none;">
-        <div class="gh-grid" id="ghGrid"></div>
-        <aside class="gh-sidebar" id="ghCharts">
-          <div class="pub-chart-card pub-chart-sticky">
-            <h4 class="pub-chart-title"><i class="fas fa-code"></i> Tech stack</h4>
-            <div class="pub-chart-bars" id="chartTechBars"></div>
-          </div>
-        </aside>
-      </div>
-
-      <h3 class="subsection-label anim" style="margin-top:3rem;"><i class="fas fa-palette"></i> Scientific Illustrations</h3>
-      <div class="illustrations-grid">
-        <div class="illust-card anim">
-          <div class="illust-img">
-            <img src="assets/img/bacteriophage.jpg" alt="Bacteriophage illustration for I2SysBio" loading="lazy">
-          </div>
-          <div class="illust-body">
-            <h3>Bacteriophage for I2SysBio</h3>
-            <p>Illustration made for the I2SysBio 2021 Christmas bookmark.</p>
-            <span class="illust-date"><i class="fas fa-calendar-alt"></i> November 2021</span>
-          </div>
+        <div class="pub-loading" id="pubLoading">
+          <span data-sprite="phage" data-scale="3" class="loading-sprite"></span>
+          <p>fetching publications from ORCID...</p>
         </div>
-        <div class="illust-card anim">
-          <div class="illust-img">
-            <img src="assets/img/graphical-abstract-lineage9.png" alt="Graphical abstract — Phylogenomics of Mycobacterium africanum" loading="lazy">
-          </div>
-          <div class="illust-body">
-            <h3>Graphical Abstract &ndash; Lineage 9</h3>
-            <p>Graphical abstract of <em>Phylogenomics of Mycobacterium africanum</em>, created for ESM contest.</p>
-            <span class="illust-date"><i class="fas fa-calendar-alt"></i> November 2021</span>
-          </div>
-        </div>
-        <div class="illust-card anim">
-          <div class="illust-img">
-            <img src="assets/img/web-page-icon.png" alt="Web page icon design" loading="lazy">
-          </div>
-          <div class="illust-body">
-            <h3>Web Page Icon</h3>
-            <p>Custom icon design for the personal portfolio website.</p>
-            <span class="illust-date"><i class="fas fa-calendar-alt"></i> 2021</span>
-          </div>
+
+        <div class="pub-layout" id="pubLayout" hidden>
+          <ol class="pub-list" id="pubList"></ol>
+          <aside class="pub-sidebar" id="pubCharts" aria-label="Topics">
+            <div class="side-card">
+              <h4 class="side-title">topics</h4>
+              <div class="bars" id="chartTopicBars"></div>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
 
-    <!-- ==================== LAB ==================== -->
-    <section class="tab-panel" id="lab">
-      <h2 class="section-title anim">Lab</h2>
-      <p class="section-sub anim">Interactive HTML experiments &amp; creative projects</p>
+    <!-- ==================== TOOLS ==================== -->
+    <section id="tools" class="sec" data-feature="tools">
+      <span id="projects" class="anchor-alias"></span>
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">04 &middot; tools</span>
+          <h2>Tools I build</h2>
+          <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
+        </header>
 
-      <div class="lab-grid" id="labGrid">
-        <a class="lab-card anim" href="i2sysbio-networks.html" target="_blank">
-          <div class="lab-card-preview lab-card-preview--network">
-            <i class="fas fa-project-diagram"></i>
-          </div>
-          <div class="lab-card-info">
-            <h3>I2SysBio Researchers Map</h3>
-            <p>Interactive co-authorship network of I2SysBio researchers. Explore connections, filter by topic, and discover collaboration patterns with deck.gl.</p>
-            <div class="lab-card-meta">
-              <span class="lab-tag">deck.gl</span>
-              <span class="lab-tag">Network</span>
-              <span class="lab-tag">OpenAlex</span>
+        <div class="tool-grid" id="toolGrid"></div>
+
+        <h3 class="sub-head">All repositories <span class="sub-note">live from GitHub</span></h3>
+        <p class="cache-info" id="ghCacheInfo"></p>
+        <div class="gh-loading" id="ghLoading">
+          <span data-sprite="bacterium" data-scale="3" class="loading-sprite"></span>
+          <p>loading repositories from GitHub...</p>
+        </div>
+        <div class="gh-filters" id="ghFilters" hidden></div>
+        <div class="gh-layout" id="ghLayout" hidden>
+          <div class="gh-grid" id="ghGrid"></div>
+          <aside class="gh-sidebar" id="ghCharts" aria-label="Languages">
+            <div class="side-card">
+              <h4 class="side-title">tech stack</h4>
+              <div class="bars" id="chartTechBars"></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="experiments" id="lab">
+          <h3 class="sub-head">Experiments <span class="sub-note">interactive things I made</span></h3>
+          <a class="experiment" href="i2sysbio-networks.html" target="_blank" rel="noopener">
+            <span class="experiment-screen" aria-hidden="true">
+              <svg viewBox="0 0 200 110"><g class="net"><path d="M30 70 L70 40 L110 62 L150 30 L180 58 M70 40 L90 90 L110 62 M110 62 L150 86 L180 58 M30 70 L90 90"/><circle cx="30" cy="70" r="5"/><circle cx="70" cy="40" r="7"/><circle cx="110" cy="62" r="9"/><circle cx="150" cy="30" r="5"/><circle cx="180" cy="58" r="6"/><circle cx="90" cy="90" r="5"/><circle cx="150" cy="86" r="4"/></g></svg>
+              <span class="press-start">&#9654; open</span>
+            </span>
+            <span class="experiment-info">
+              <strong>I2SysBio Researchers Map</strong>
+              <span>Interactive co-authorship network of I2SysBio researchers. Explore connections, filter by topic, and discover collaboration patterns with deck.gl.</span>
+              <span class="tags"><span>deck.gl</span><span>network</span><span>OpenAlex</span></span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== DRAWINGS ==================== -->
+    <section id="drawings" class="sec" data-feature="drawings">
+      <span id="illustrations" class="anchor-alias"></span>
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">05 &middot; drawings</span>
+          <h2>Drawings</h2>
+          <span class="sec-note">click one to see it at full size</span>
+        </header>
+        <div class="drawings">
+          <figure class="print">
+            <span class="tape" aria-hidden="true"></span>
+            <a href="assets/img/bacteriophage.jpg" target="_blank" rel="noopener" aria-label="Open the bacteriophage illustration at full size">
+              <img src="assets/img/web/bacteriophage.webp" alt="Pencil illustration of a bacteriophage" loading="lazy" width="1200" height="900">
+            </a>
+            <figcaption><strong>Bacteriophage for I2SysBio</strong><span>Illustration made for the I2SysBio 2021 Christmas bookmark.</span><time>November 2021</time></figcaption>
+          </figure>
+          <figure class="print">
+            <span class="tape" aria-hidden="true"></span>
+            <a href="assets/img/graphical-abstract-lineage9.png" target="_blank" rel="noopener" aria-label="Open the Lineage 9 graphical abstract at full size">
+              <img src="assets/img/web/graphical-abstract-lineage9.webp" alt="Graphical abstract of Phylogenomics of Mycobacterium africanum" loading="lazy" width="1200" height="1000">
+            </a>
+            <figcaption><strong>Graphical abstract, Lineage 9</strong><span>For <em>Phylogenomics of Mycobacterium africanum</em>, created for an ESM contest.</span><time>November 2021</time></figcaption>
+          </figure>
+          <figure class="print">
+            <span class="tape" aria-hidden="true"></span>
+            <a href="assets/img/web-page-icon.png" target="_blank" rel="noopener" aria-label="Open the web page icon at full size">
+              <img src="assets/img/web/web-page-icon.webp" alt="Logo designed for this website" loading="lazy" width="800" height="800">
+            </a>
+            <figcaption><strong>Web page icon</strong><span>The logo of this website.</span><time>2021</time></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== HOBBIES ==================== -->
+    <section id="hobbies" class="sec" data-feature="hobbies">
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">06 &middot; hobbies</span>
+          <h2>Off the bench</h2>
+          <span class="sec-note">keyboards, 3D prints, and the microbes that followed me home</span>
+        </header>
+        <p class="bench-lead">When I am not at the terminal I build mechanical keyboards and 3D print things. Everything on this desk does something: press it, or type in the console under it.</p>
+        <div class="bench" id="bench">
+          <div class="bench-shelf" aria-hidden="true"><span class="shelf-items" id="shelfItems"><span class="shelf-item" data-shelf="keycap"></span></span></div>
+          <button type="button" class="thing thing--lamp" aria-label="Desk lamp: switch the light (dark mode)"><span class="thing-sprite" aria-hidden="true"></span></button>
+          <div class="thing thing--monitor">
+            <span class="thing-sprite" aria-hidden="true"></span>
+            <div class="screen" aria-hidden="true">
+              <div class="screen-seq"></div>
+              <p class="screen-say"></p>
             </div>
           </div>
-        </a>
+          <button type="button" class="thing thing--mug" aria-label="A mug of coffee: a sip for everyone"><span class="thing-sprite" aria-hidden="true"></span><span class="steam" aria-hidden="true"><i></i><i></i><i></i></span></button>
+          <button type="button" class="thing thing--printer" aria-label="3D printer, a Bambu Lab X1C: print something">
+            <span class="x1c-inside" aria-hidden="true">
+              <span class="x1c-led"></span>
+              <span class="x1c-rod"></span>
+              <span class="printer-head"></span>
+              <span class="x1c-bed"><span class="printer-print"></span><span class="x1c-bed-plate"></span></span>
+            </span>
+            <span class="x1c-glass" aria-hidden="true"></span>
+            <span class="printer-frame" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="thing thing--jar" aria-label="Fish food: feed the koi"><span class="thing-sprite" aria-hidden="true"></span></button>
+          <div class="bench-desk" aria-hidden="true"></div>
+          <button type="button" class="thing thing--keyboard" aria-label="Mechanical keyboard: press it, then type"><span class="thing-sprite" aria-hidden="true"></span></button>
+          <div class="critters" id="critters"></div>
+          <p class="sr-only" id="benchLive" aria-live="polite"></p>
+        </div>
+        <div class="console" id="console">
+          <div class="console-bar" aria-hidden="true"><i></i><i></i><i></i><span>paula@bench: ~</span></div>
+          <ol class="term-out" id="termOut" aria-live="polite"></ol>
+          <form class="term-in" id="termForm" autocomplete="off"><label for="termInput">$</label><input id="termInput" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Console: type a command, try help"></form>
+        </div>
+        <p class="hint">press the lamp, the mug, the printer, the jar or a microbe, and type <b>help</b> in the console</p>
       </div>
     </section>
 
-    <!-- ==================== BLOG ==================== -->
-    <section class="tab-panel" id="blog">
-      <h2 class="section-title anim">Blog</h2>
-      <p class="section-sub anim">News, updates &amp; thoughts</p>
-
-      <div class="blog-list" id="blogList"></div>
-
+    <!-- ==================== NEWS ==================== -->
+    <section id="news" class="sec" data-feature="news">
+      <span id="blog" class="anchor-alias"></span>
+      <div class="wrap">
+        <header class="sec-head">
+          <span class="sec-tag">07 &middot; news</span>
+          <h2>News</h2>
+          <span class="sec-note">from the lab notebook</span>
+        </header>
+        <div class="diary" id="blogList"></div>
+      </div>
     </section>
 
     <!-- ==================== CONTACT ==================== -->
-    <section class="tab-panel" id="contact">
-      <h2 class="section-title anim">Contact</h2>
-      <p class="section-sub anim">Get in touch</p>
-
-      <div class="contact-grid">
-        <div class="contact-card anim">
-          <div class="contact-icon"><i class="fas fa-envelope"></i></div>
-          <h3>Email</h3>
-          <a href="mailto:paula.ruiz.rodriguez@csic.es">paula.ruiz.rodriguez@csic.es</a>
-        </div>
-        <div class="contact-card anim">
-          <div class="contact-icon"><i class="fas fa-building"></i></div>
-          <h3>Institution</h3>
-          <p>CSIC &ndash; I2SysBio</p>
-          <p>PathoGenOmics Lab</p>
-          <p>Valencia, Spain</p>
-        </div>
-        <div class="contact-card anim">
-          <div class="contact-icon"><i class="fas fa-share-alt"></i></div>
-          <h3>Profiles</h3>
-          <div class="contact-links">
-            <a href="https://bsky.app/profile/paururo.bsky.social" target="_blank"><i class="fab fa-bluesky"></i> Bluesky</a>
-            <a href="https://www.linkedin.com/in/paururo" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>
-            <a href="https://twitter.com/paururo" target="_blank"><i class="fab fa-twitter"></i> Twitter</a>
-            <a href="https://github.com/paururo" target="_blank"><i class="fab fa-github"></i> GitHub</a>
-            <a href="https://scholar.google.es/citations?user=hebFDXQAAAAJ&hl=es" target="_blank"><i class="ai ai-google-scholar"></i> Google Scholar</a>
-            <a href="https://orcid.org/0000-0003-0727-5974" target="_blank"><i class="ai ai-orcid"></i> ORCID</a>
-            <a href="https://www.researchgate.net/profile/Paula-Ruiz-Rodriguez" target="_blank"><i class="ai ai-researchgate"></i> ResearchGate</a>
+    <section id="contact" class="sec" data-feature="contact">
+      <div class="wrap contact">
+        <header class="sec-head">
+          <span class="sec-tag">08 &middot; contact</span>
+          <h2>Say hello</h2>
+        </header>
+        <div class="contact-grid">
+          <div class="letter">
+            <p class="contact-intro">Email is the quickest way to reach me. Write if you want to talk about tuberculosis or SARS-CoV-2 genomics, use one of my tools, or need a scientific illustration.</p>
+            <a class="contact-email" href="mailto:paula.ruiz.rodriguez@csic.es">paula.ruiz.rodriguez@csic.es</a>
+            <p class="contact-place"><strong>PathoGenOmics Lab</strong><br>I2SysBio (CSIC and University of Valencia)<br>Valencia, Spain</p>
+            <button type="button" class="letter-cup" id="letterCup" aria-label="A café con leche on the letter. Take a sip"><span class="cup-steam" aria-hidden="true"><i></i><i></i><i></i></span><span class="cup-sprite" aria-hidden="true"></span></button>
+            <svg class="envelope" viewBox="0 0 120 80" aria-hidden="true"><rect x="6" y="10" width="108" height="62" rx="4"/><path d="M8 13 L60 50 L112 13 M8 70 L46 40 M112 70 L74 40"/></svg>
           </div>
+          <ul class="profiles" aria-label="Profiles">
+            <li><a href="https://github.com/paururo" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i> GitHub</a></li>
+            <li><a href="https://scholar.google.es/citations?user=hebFDXQAAAAJ&amp;hl=es" target="_blank" rel="noopener"><i class="ai ai-google-scholar" aria-hidden="true"></i> Google Scholar</a></li>
+            <li><a href="https://orcid.org/0000-0003-0727-5974" target="_blank" rel="noopener"><i class="ai ai-orcid" aria-hidden="true"></i> ORCID</a></li>
+            <li><a href="https://bsky.app/profile/paururo.bsky.social" target="_blank" rel="noopener"><i class="fab fa-bluesky" aria-hidden="true"></i> Bluesky</a></li>
+            <li><a href="https://www.linkedin.com/in/paururo" target="_blank" rel="noopener"><i class="fab fa-linkedin" aria-hidden="true"></i> LinkedIn</a></li>
+            <li><a href="https://twitter.com/paururo" target="_blank" rel="noopener"><i class="fab fa-twitter" aria-hidden="true"></i> Twitter</a></li>
+            <li><a href="https://www.researchgate.net/profile/Paula-Ruiz-Rodriguez" target="_blank" rel="noopener"><i class="ai ai-researchgate" aria-hidden="true"></i> ResearchGate</a></li>
+          </ul>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Footer -->
   <footer class="footer">
-    <p>&copy; 2026 Paula Ruiz-Rodriguez &middot; PathoGenOmics Lab</p>
+    <a class="to-top" href="#about">back to the top <i class="fas fa-arrow-up" aria-hidden="true"></i></a>
+    <span data-sprite="phage" data-scale="2" class="footer-sprite"></span>
+    <p>&copy; 2026 Paula Ruiz-Rodriguez &middot; PathoGenOmics Lab, I2SysBio (CSIC &amp; University of Valencia)</p>
   </footer>
 
+  <!-- Polar, my lovebird -->
+  <button class="polar" id="polar" type="button" aria-label="Polar, my lovebird. Press to say hi" title="Polar" hidden><span class="polar-sprite" aria-hidden="true"></span><span class="polar-hit" aria-hidden="true"></span></button>
+
+  <!-- The koi rise above the page for their shows -->
+  <div class="pond-veil" id="pondVeil" aria-hidden="true"><p class="pond-caption" id="pondCaption"></p></div>
+
+  <!-- Washi-tape ticker: pathogens from the papers, languages from the code -->
+  <div class="tape-ticker" id="dnaTicker" aria-hidden="true">
+    <div class="dna-ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <script src="js/content.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/play.js"></script>
+  <script src="js/polar.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

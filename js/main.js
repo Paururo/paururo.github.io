@@ -1,6 +1,10 @@
-// ==================== CONFIG ====================
-const ORCID_ID = '0000-0003-0727-5974';
-const ORCID_API = `https://pub.orcid.org/v3.0/${ORCID_ID}/works`;
+// ============================================================
+// Behaviour and live data: ORCID, Semantic Scholar, GitHub and
+// Bioconda download counts. Content lives in content.js and the
+// drawings in art.js.
+// ============================================================
+
+const ORCID_API = `https://pub.orcid.org/v3.0/${SITE.orcid}/works`;
 const S2_API = 'https://api.semanticscholar.org/graph/v1/paper/DOI:';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 1 day
 
@@ -14,42 +18,154 @@ function cacheGet(key) {
     return data;
   } catch { return null; }
 }
-
 function cacheSet(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
-
 function cacheTimestamp(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw).ts;
-  } catch { return null; }
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw).ts : null; } catch { return null; }
 }
-
-function cacheInvalidate(...keys) { keys.forEach(k => localStorage.removeItem(k)); }
+function cacheInvalidate(...keys) { keys.forEach(k => { try { localStorage.removeItem(k); } catch {} }); }
 
 function showCacheInfo(elementId, cacheKeys, refreshCallback) {
   const el = document.getElementById(elementId);
   if (!el) return;
   const ts = cacheTimestamp(cacheKeys[0]);
-  if (ts) {
-    const date = new Date(ts);
-    const daysLeft = Math.ceil((ts + CACHE_TTL - Date.now()) / (24*60*60*1000));
-    el.innerHTML = `<i class="fas fa-database"></i> Cached ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · refreshes in ${daysLeft}d <button class="refresh-btn" id="refresh_${elementId}"><i class="fas fa-sync-alt"></i> Refresh</button>`;
-    document.getElementById(`refresh_${elementId}`).addEventListener('click', () => {
-      cacheInvalidate(...cacheKeys);
-      el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-      refreshCallback();
-    });
-  } else {
-    el.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Fetched just now';
-  }
+  if (!ts) { el.innerHTML = '<i class="fas fa-cloud-arrow-down" aria-hidden="true"></i> fetched just now'; return; }
+  const date = new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const hours = Math.max(1, Math.ceil((ts + CACHE_TTL - Date.now()) / 3600000));
+  el.innerHTML = `<i class="fas fa-floppy-disk" aria-hidden="true"></i> saved ${date}, refreshes in ${hours}h <button type="button" class="refresh-btn" id="refresh_${elementId}">refresh</button>`;
+  document.getElementById(`refresh_${elementId}`).addEventListener('click', () => {
+    cacheInvalidate(...cacheKeys);
+    el.textContent = 'refreshing...';
+    refreshCallback();
+  });
 }
 
-// ==================== GLOBAL SPEED ====================
-let animSpeed = 0.5;
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+function animateNumber(elementId, target, format = n => n.toLocaleString('en-US')) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (PREFERS_REDUCED_MOTION) { el.textContent = format(target); return; }
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min((now - start) / 1400, 1);
+    el.textContent = format(Math.round(target * (1 - Math.pow(1 - t, 4))));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  injectSvgDefs();
+  fillSprites();
+  renderSelectedWork();
+  renderFeaturedTools();
+  renderBlogPosts();
+  renderCareerChromosome();
+  renderTopicTree();
+  initNavigation();
+  initDarkMode();
+  initSpeedControl();
+  initExpandableCards();
+  initKoiPond();
+  initPondControls();
+  initBench();
+  initLetterCup();
+  initPolar();
+  initHelices();
+  initGenomeRuler();
+  scatterBugs();
+  initStatBubbles();
+  initPubFilters();
+  fetchPublications();
+  fetchGitHubRepos();
+  fetchToolDownloads();
+});
+
+// ==================== NAVIGATION ====================
+// One page: anchors scroll natively (smooth, below the fixed header). The
+// highlighted section follows the scroll. Content that loads later can push
+// a #target down, so the page scrolls to it again unless the reader already
+// moved on.
+let readerScrolled = false;
+
+function rescrollToHash() {
+  if (readerScrolled || !location.hash) return;
+  const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (el) el.scrollIntoView({ block: 'start' });
+}
+
+function initNavigation() {
+  const navToggle = document.getElementById('navToggle');
+  const navMenu = document.getElementById('navLinks');
+  const links = [...document.querySelectorAll('.nav-link')];
+  const sections = [...document.querySelectorAll('main > section[id]')];
+
+  const closeMenu = () => {
+    navMenu.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  };
+  navToggle.addEventListener('click', () => {
+    const open = !navMenu.classList.contains('open');
+    navMenu.classList.toggle('open', open);
+    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav-link')) closeMenu();
+    else if (!e.target.closest('.topbar')) closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && navMenu.classList.contains('open')) { closeMenu(); navToggle.focus(); }
+  });
+
+  ['wheel', 'touchmove', 'keydown', 'mousedown'].forEach(ev =>
+    window.addEventListener(ev, () => { readerScrolled = true; }, { passive: true, once: true }));
+  window.addEventListener('hashchange', () => { readerScrolled = true; });
+  window.addEventListener('load', rescrollToHash);
+
+  let ticking = false;
+  const spy = () => {
+    ticking = false;
+    const probe = window.scrollY + window.innerHeight * 0.33;
+    let current = sections[0];
+    for (const s of sections) if (s.offsetTop <= probe) current = s;
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = sections[sections.length - 1];
+    links.forEach(l => {
+      const on = l.getAttribute('href') === '#' + current.id;
+      l.classList.toggle('active', on);
+      if (on) l.setAttribute('aria-current', 'true'); else l.removeAttribute('aria-current');
+    });
+  };
+  window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(spy); } }, { passive: true });
+  spy();
+}
+
+// ==================== DARK MODE ====================
+// Follows the system until the reader picks one with the button.
+function initDarkMode() {
+  const toggle = document.getElementById('darkToggle');
+  if (!toggle) return;
+  let saved = null;
+  try { saved = localStorage.getItem('theme'); } catch {}
+  const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // A page embedded somewhere that already set a theme keeps it
+  const stamped = document.documentElement.getAttribute('data-theme');
+  const apply = (dark) => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    toggle.querySelector('i').className = dark ? 'fas fa-sun' : 'fas fa-moon';
+    toggle.setAttribute('aria-pressed', dark ? 'true' : 'false');
+  };
+  apply(saved ? saved === 'dark' : stamped ? stamped === 'dark' : systemDark);
+  toggle.addEventListener('click', () => {
+    const dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+    apply(dark);
+    try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch {}
+  });
+}
+
+// ==================== ANIMATION SPEED ====================
 function initSpeedControl() {
   const control = document.getElementById('speedControl');
   const toggle = document.getElementById('speedToggle');
@@ -57,1207 +173,266 @@ function initSpeedControl() {
   const label = document.getElementById('speedLabel');
   if (!control || !toggle || !slider) return;
 
-  toggle.addEventListener('click', () => control.classList.toggle('open'));
+  // CSS animations (the scattered bacteria) pause with the class
+  const show = () => {
+    label.textContent = animSpeed === 0 ? 'off' : animSpeed.toFixed(1) + 'x';
+    document.documentElement.classList.toggle('anim-off', animSpeed === 0);
+  };
+  slider.value = Math.round(animSpeed * 100);
+  tickerState.speed = 0.5 * animSpeed;
+  show();
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.speed-control')) control.classList.remove('open');
+  const setOpen = (open) => {
+    control.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  toggle.addEventListener('click', () => setOpen(!control.classList.contains('open')));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.speed-control')) setOpen(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && control.classList.contains('open')) { setOpen(false); toggle.focus(); }
   });
-
   slider.addEventListener('input', () => {
-    const val = parseInt(slider.value);
-    animSpeed = val / 100;
-    if (label) {
-      if (val === 0) label.textContent = 'off';
-      else label.textContent = animSpeed.toFixed(1) + 'x';
-    }
+    animSpeed = parseInt(slider.value, 10) / 100;
     tickerState.speed = 0.5 * animSpeed;
+    show();
   });
 }
 
-// ==================== MAIN INIT ====================
-document.addEventListener('DOMContentLoaded', () => {
-  initTabNavigation();
-  initDarkMode();
-  initExpandableCards();
-  initBioCanvas();
-  initDNACards();
-  initCareerTimeline();
-  initNavbarEffects();
-  initMagneticLinks();
-  initPageEntrance();
-  initPubFilters();
-  initStatBubbles();
-  initSpeedControl();
-  renderBlogPosts();
-  fetchPublications();
-  fetchGitHubRepos();
-});
-
-// ==================== PAGE ENTRANCE SEQUENCE ====================
-function initPageEntrance() {
-  const body = document.body;
-  body.classList.add('page-loading');
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      body.classList.remove('page-loading');
-      body.classList.add('page-loaded');
-
-      // Trigger scroll animations for active panel
-      setTimeout(() => {
-        const panel = document.querySelector('.tab-panel.active');
-        if (panel) observeAnimatedElements(panel);
-      }, 100);
-    });
-  });
-}
-
-// ==================== SCROLL ANIMATIONS ====================
-function observeAnimatedElements(container) {
-  const elements = container.querySelectorAll('.anim');
-  if (!elements.length) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('anim-visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
-  elements.forEach(el => observer.observe(el));
-}
-
-// ==================== TAB NAVIGATION ====================
-function initTabNavigation() {
-  const navLinks = document.querySelectorAll('.nav-link[data-tab]');
-  const navToggle = document.getElementById('navToggle');
-  const navMenu = document.getElementById('navLinks');
-
-  function switchTab(tabId) {
-    const current = document.querySelector('.tab-panel.active');
-    const target = document.getElementById(tabId);
-    if (!target || current === target) return;
-
-    navLinks.forEach(l => l.classList.remove('active'));
-    const link = document.querySelector(`.nav-link[data-tab="${tabId}"]`);
-    if (link) link.classList.add('active');
-
-    if (current) {
-      current.classList.add('fade-out');
-      current.addEventListener('animationend', () => {
-        current.classList.remove('active', 'fade-out');
-        target.classList.add('active');
-        observeAnimatedElements(target);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, { once: true });
-    } else {
-      target.classList.add('active');
-      observeAnimatedElements(target);
-    }
-    history.replaceState(null, '', '#' + tabId);
-  }
-
-  navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      switchTab(link.dataset.tab);
-      navMenu.classList.remove('open');
-      navToggle.classList.remove('active');
-    });
-  });
-
-  navToggle.addEventListener('click', () => {
-    navMenu.classList.toggle('open');
-    navToggle.classList.toggle('active');
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.navbar')) {
-      navMenu.classList.remove('open');
-      navToggle.classList.remove('active');
-    }
-  });
-
-  const hash = window.location.hash.replace('#', '');
-  if (hash && document.getElementById(hash)) switchTab(hash);
-}
-
-// ==================== EXPANDABLE CARDS ====================
+// ==================== EXPANDABLE HELIX CARDS ====================
 function initExpandableCards() {
   document.querySelectorAll('[data-expandable]').forEach(card => {
-    const top = card.querySelector('.about-card-top') || card.querySelector('.dna-card-header');
-    if (!top) return;
-    top.addEventListener('click', () => card.classList.toggle('expanded'));
-  });
-}
-
-// ==================== DARK MODE ====================
-function initDarkMode() {
-  const toggle = document.getElementById('darkToggle');
-  if (!toggle) return;
-
-  const saved = localStorage.getItem('theme');
-  if (saved === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    toggle.querySelector('i').className = 'fas fa-sun';
-  }
-
-  toggle.addEventListener('click', () => {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-    if (isDark) document.documentElement.removeAttribute('data-theme');
-    toggle.querySelector('i').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
-  });
-}
-
-// ==================== NAVBAR EFFECTS ====================
-function initNavbarEffects() {
-  const navbar = document.getElementById('navbar');
-  const progress = document.getElementById('scrollProgress');
-
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    navbar.classList.toggle('navbar-scrolled', y > 40);
-
-    // Scroll progress
-    if (progress) {
-      const h = document.documentElement.scrollHeight - window.innerHeight;
-      progress.style.transform = `scaleX(${h > 0 ? y / h : 0})`;
-    }
-  }, { passive: true });
-}
-
-// ==================== MAGNETIC HOVER ON HERO LINKS ====================
-function initMagneticLinks() {
-  document.querySelectorAll('.hero-link').forEach(link => {
-    link.addEventListener('mousemove', (e) => {
-      const rect = link.getBoundingClientRect();
-      const x = e.clientX - rect.left - rect.width / 2;
-      const y = e.clientY - rect.top - rect.height / 2;
-      link.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-    });
-    link.addEventListener('mouseleave', () => {
-      link.style.transform = '';
-    });
-  });
-}
-
-// ==================== PUBLICATION FILTERS ====================
-let pubFilterState = { year: 'all', keyword: 'all', search: '' };
-
-function applyPubFilters() {
-  const { year, keyword, search } = pubFilterState;
-  const searchLower = search.toLowerCase().trim();
-  let visible = 0;
-
-  document.querySelectorAll('.pub-item').forEach(item => {
-    const matchYear = year === 'all' || item.dataset.year === year;
-    const matchKeyword = keyword === 'all' || (item.dataset.keywords || '').split(',').includes(keyword);
-    const matchSearch = !searchLower || (item.textContent || '').toLowerCase().includes(searchLower);
-
-    if (matchYear && matchKeyword && matchSearch) {
-      item.style.display = '';
-      item.style.animation = 'slideIn 0.3s var(--ease) both';
-      visible++;
-    } else {
-      item.style.display = 'none';
-    }
-  });
-
-  const noResults = document.getElementById('pubNoResults');
-  if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
-
-  // Update charts to reflect current filters
-  if (pubChartData.pubs.length) updateCharts();
-}
-
-function initPubFilters() {
-  // Year filter buttons
-  document.querySelectorAll('.pub-filter-btn').forEach(btn => {
+    const btn = card.querySelector('.helix-toggle');
+    if (!btn) return;
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.pub-filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      pubFilterState.year = btn.dataset.year;
-      applyPubFilters();
+      const open = !card.classList.contains('expanded');
+      card.classList.toggle('expanded', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace(open ? 'Expand' : 'Collapse', open ? 'Collapse' : 'Expand'));
     });
-  });
-
-  // Keyword filter buttons
-  document.querySelectorAll('.pub-keyword-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.pub-keyword-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      pubFilterState.keyword = btn.dataset.keyword;
-      applyPubFilters();
-    });
-  });
-
-  // Search input
-  const searchInput = document.getElementById('pubSearch');
-  if (searchInput) {
-    let searchTimeout;
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        pubFilterState.search = searchInput.value;
-        applyPubFilters();
-      }, 200);
-    });
-  }
-}
-
-// ==================== BIO CANVAS — DNA DOUBLE HELIX + PARTICLES ====================
-function initBioCanvas() {
-  const canvas = document.getElementById('bioCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  let W, H, mouse = { x: -1000, y: -1000 }, particles = [], helixTime = 0, bioLastTime = 0;
-  const NUCLEOTIDES = ['A', 'T', 'C', 'G'];
-  const PAIRS = { A: 'T', T: 'A', C: 'G', G: 'C' };
-
-  function isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
-
-  function getColors() {
-    return isDark() ? [
-      { r:255, g:140, b:90 }, { r:74, g:234, b:224 },
-      { r:180, g:142, b:255 }, { r:80, g:232, b:155 }
-    ] : [
-      { r:217, g:119, b:87 }, { r:59, g:138, b:138 },
-      { r:123, g:107, b:160 }, { r:74, g:158, b:109 }
-    ];
-  }
-
-  function rgba(c, a) { return `rgba(${c.r},${c.g},${c.b},${a})`; }
-
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-    createParticles();
-  }
-
-  function createParticles() {
-    const count = Math.min(Math.floor((W * H) / 25000), 60);
-    particles = [];
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * W, y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-        r: 1.5 + Math.random() * 2,
-        ci: Math.floor(Math.random() * 4),
-        label: NUCLEOTIDES[Math.floor(Math.random() * 4)],
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
-  }
-
-  // Draw a DNA double helix column
-  function drawHelix(cx, startY, nodes, colors, dark, phaseOffset) {
-    const spacing = 40;
-    const amplitude = 35;
-
-    for (let i = 0; i < nodes; i++) {
-      const y = startY + i * spacing;
-      if (y < -50 || y > H + 50) continue;
-
-      const angle = helixTime + i * 0.6 + phaseOffset;
-      const x1 = cx + Math.sin(angle) * amplitude;
-      const x2 = cx + Math.sin(angle + Math.PI) * amplitude;
-      const z1 = Math.cos(angle);
-      const z2 = Math.cos(angle + Math.PI);
-
-      // Bond line between strands
-      const bondAlpha = dark ? 0.08 : 0.05;
-      ctx.strokeStyle = rgba(colors[1], bondAlpha);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x1, y);
-      ctx.lineTo(x2, y);
-      ctx.stroke();
-
-      // Strand 1 node
-      const a1 = (z1 + 1) / 2 * 0.5 + 0.1;
-      const r1 = 3 + z1 * 1.5;
-      if (dark) { ctx.shadowColor = rgba(colors[0], 0.4); ctx.shadowBlur = 6; }
-      ctx.fillStyle = rgba(colors[0], a1 * (dark ? 1.4 : 1));
-      ctx.beginPath();
-      ctx.arc(x1, y, Math.max(r1, 1), 0, Math.PI * 2);
-      ctx.fill();
-
-      // Strand 2 node
-      const a2 = (z2 + 1) / 2 * 0.5 + 0.1;
-      const r2 = 3 + z2 * 1.5;
-      ctx.shadowColor = rgba(colors[2], 0.4);
-      ctx.fillStyle = rgba(colors[2], a2 * (dark ? 1.4 : 1));
-      ctx.beginPath();
-      ctx.arc(x2, y, Math.max(r2, 1), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    // Backbone curves
-    ctx.lineWidth = 1.5;
-    for (let strand = 0; strand < 2; strand++) {
-      const offset = strand * Math.PI;
-      ctx.strokeStyle = rgba(colors[strand === 0 ? 0 : 2], dark ? 0.12 : 0.06);
-      ctx.beginPath();
-      for (let i = 0; i < nodes; i++) {
-        const y = startY + i * spacing;
-        const x = cx + Math.sin(helixTime + i * 0.6 + phaseOffset + offset) * amplitude;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  }
-
-  function draw(timestamp) {
-    const bioDt = bioLastTime ? Math.min((timestamp - bioLastTime) / 16.667, 3) : 1;
-    bioLastTime = timestamp;
-    ctx.clearRect(0, 0, W, H);
-    const colors = getColors();
-    const dark = isDark();
-    helixTime += 0.015 * animSpeed * bioDt;
-
-    // Draw helices — each with a different phase offset
-    const helixCount = Math.max(2, Math.floor(W / 500));
-    for (let h = 0; h < helixCount; h++) {
-      const cx = (W / (helixCount + 1)) * (h + 1);
-      const nodes = Math.ceil(H / 40) + 4;
-      const phaseOffset = h * (Math.PI * 2 / helixCount);
-      drawHelix(cx, -80, nodes, colors, dark, phaseOffset);
-    }
-
-    // Draw floating particles with connections
-    const connectDist = 120;
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-
-      // Mouse proximity effect
-      const dx = p.x - mouse.x, dy = p.y - mouse.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const mouseInfluence = Math.max(0, 1 - dist / 200);
-
-      // Connect nearby particles
-      for (let j = i + 1; j < particles.length; j++) {
-        const q = particles[j];
-        const ddx = p.x - q.x, ddy = p.y - q.y;
-        const d = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (d < connectDist) {
-          const alpha = (1 - d / connectDist) * (dark ? 0.12 : 0.05);
-          ctx.strokeStyle = rgba(colors[p.ci], alpha);
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(q.x, q.y);
-          ctx.stroke();
-        }
-      }
-
-      // Draw particle
-      const glow = mouseInfluence * 0.5;
-      const baseAlpha = dark ? 0.5 : 0.3;
-      const particleR = p.r + mouseInfluence * 3;
-
-      if (dark && mouseInfluence > 0.1) {
-        ctx.shadowColor = rgba(colors[p.ci], 0.6);
-        ctx.shadowBlur = 12 * mouseInfluence;
-      }
-
-      ctx.fillStyle = rgba(colors[p.ci], baseAlpha + glow);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, particleR, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Label
-      ctx.shadowBlur = 0;
-      if (particleR > 2.5) {
-        ctx.font = `600 ${particleR * 3}px 'JetBrains Mono', monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = rgba(colors[p.ci], (dark ? 0.25 : 0.12) + glow * 0.3);
-        ctx.fillText(p.label, p.x, p.y - particleR * 2.5);
-      }
-
-      // Update position
-      p.x += (p.vx + Math.sin(helixTime + p.phase) * 0.1) * animSpeed * bioDt;
-      p.y += (p.vy + Math.cos(helixTime * 0.7 + p.phase) * 0.08) * animSpeed * bioDt;
-
-      // Mouse repulsion
-      if (dist < 150 && dist > 0) {
-        p.vx += (dx / dist) * 0.02 * bioDt;
-        p.vy += (dy / dist) * 0.02 * bioDt;
-      }
-
-      // Damping
-      p.vx *= Math.pow(0.998, bioDt);
-      p.vy *= Math.pow(0.998, bioDt);
-
-      // Bounce
-      if (p.x < 0 || p.x > W) p.vx *= -1;
-      if (p.y < 0 || p.y > H) p.vy *= -1;
-      p.x = Math.max(0, Math.min(W, p.x));
-      p.y = Math.max(0, Math.min(H, p.y));
-    }
-
-    requestAnimationFrame(draw);
-  }
-
-  document.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-  document.addEventListener('mouseleave', () => { mouse.x = -1000; mouse.y = -1000; });
-  window.addEventListener('resize', resize);
-  resize();
-  draw();
-}
-
-// ==================== 3D DNA HELIX CARDS ====================
-
-// Shared tooltip
-let dnaTooltip = null;
-
-function showDNATooltip(screenX, screenY, data, accentColor) {
-  if (!dnaTooltip) {
-    dnaTooltip = document.createElement('div');
-    dnaTooltip.className = 'dna-tooltip';
-    dnaTooltip.innerHTML =
-      '<div class="dna-tooltip-accent"></div>' +
-      '<div class="dna-tooltip-inner">' +
-        '<div class="dna-tooltip-close">&times;</div>' +
-        '<div class="dna-tooltip-title"></div>' +
-        '<div class="dna-tooltip-year"></div>' +
-        '<div class="dna-tooltip-detail"></div>' +
-      '</div>';
-    document.body.appendChild(dnaTooltip);
-    dnaTooltip.querySelector('.dna-tooltip-close').addEventListener('click', e => {
-      e.stopPropagation();
-      hideDNATooltip();
-    });
-  }
-  dnaTooltip.querySelector('.dna-tooltip-accent').style.background = accentColor;
-  dnaTooltip.querySelector('.dna-tooltip-title').textContent = data.title || data.label;
-  const yearEl = dnaTooltip.querySelector('.dna-tooltip-year');
-  if (data.year) { yearEl.textContent = data.year; yearEl.style.display = ''; }
-  else { yearEl.style.display = 'none'; }
-  dnaTooltip.querySelector('.dna-tooltip-detail').textContent = data.detail || '';
-  dnaTooltip.style.left = screenX + 'px';
-  dnaTooltip.style.top = screenY + 'px';
-  dnaTooltip.classList.add('visible');
-}
-
-function hideDNATooltip() {
-  if (dnaTooltip) dnaTooltip.classList.remove('visible');
-}
-
-function initDNACards() {
-  const configs = [
-    {
-      canvasId: 'dnaResearchSkills',
-      strandA: [
-        { label: 'Evolution', title: 'Bacterial Evolution', detail: 'Evolutionary processes in bacterial populations' },
-        { label: 'M. tuberculosis', title: 'Genetics & Pathogenesis', detail: 'M. tuberculosis lineage diversity and drug resistance' },
-        { label: 'SARS-CoV-2', title: 'Epidemiology of SARS-CoV-2', detail: 'Genomic surveillance in the Valencian Community' },
-        { label: 'Phylogenetics', title: 'Phylogenetics & Phylogenomics', detail: 'Evolutionary relationships through genomic analysis' },
-        { label: 'Genomics', title: 'Comparative Genomics', detail: 'Whole-genome analysis of pathogenic organisms' },
-        { label: 'Pathogenesis', title: 'Pathogen Detection', detail: 'Development of bioinformatics pipelines' },
-        { label: 'Illustration', title: 'Scientific Illustration', detail: 'Visual communication of scientific concepts' },
-      ],
-      strandB: [
-        { label: 'Python', title: 'Python', detail: 'Data analysis, pipeline development, automation' },
-        { label: 'R', title: 'R / RStudio', detail: 'Statistical computing and data visualization' },
-        { label: 'Rust', title: 'Rust', detail: 'High-performance bioinformatics tools' },
-        { label: 'Bash', title: 'Bash / Shell', detail: 'Unix scripting, HPC job automation' },
-        { label: 'Statistics', title: 'Biostatistics', detail: 'Experimental design and data analysis' },
-        { label: 'Bioinformatics', title: 'Bioinformatics Tools', detail: 'IQ-TREE, RAxML, BEAST, BWA, SAMtools, Snippy' },
-        { label: 'Docker', title: 'DevOps & Workflows', detail: 'Docker, Snakemake, Nextflow, Git, Conda' },
-      ],
-      lightA: { r:74, g:158, b:109 },  lightB: { r:59, g:138, b:138 },
-      darkA:  { r:80, g:232, b:155 },  darkB:  { r:74, g:234, b:224 },
-    },
-    {
-      canvasId: 'dnaEducationExp',
-      strandA: [
-        { label: 'PhD', title: 'PhD in Biodiversity & Evolutionary Biology', year: '2022 – 2026', detail: 'University of Valencia' },
-        { label: 'MSc', title: 'MSc in Bioinformatics', year: '2019 – 2021', detail: 'University of Valencia' },
-        { label: 'BSc', title: 'BSc in Biology', year: '2015 – 2019', detail: 'University of Valencia' },
-        { label: 'Biodiversity', title: 'Biodiversity Research', detail: 'Evolutionary biology specialization' },
-        { label: 'Bioinformatics', title: 'Computational Biology', detail: 'Genomics & phylogenetics' },
-        { label: 'Biology', title: 'Biological Sciences', detail: 'Molecular biology & genetics foundation' },
-        { label: 'Valencia', title: 'University of Valencia', detail: 'Estudi General, founded 1499' },
-      ],
-      strandB: [
-        { label: 'CSIC', title: 'Research Technician', year: 'Jul 2021 – Present', detail: 'CSIC – I2SysBio' },
-        { label: 'I2SysBio', title: 'Research Technician', year: 'Nov 2020 – Jun 2021', detail: 'Univ. Valencia – I2SysBio' },
-        { label: 'PathoGenOmics', title: 'PathoGenOmics Lab', detail: 'Bioinformatician in pathogen genomics' },
-        { label: 'Pipelines', title: 'Bioinformatics Pipelines', detail: 'Snakemake & Nextflow workflows' },
-        { label: 'Phylogenomics', title: 'Phylogenomic Analysis', detail: 'M. tuberculosis lineage studies' },
-        { label: 'Sequencing', title: 'Genome Sequencing', detail: 'NGS data processing & analysis' },
-        { label: 'HPC', title: 'High-Performance Computing', detail: 'Linux, Slurm, cluster computing' },
-      ],
-      lightA: { r:217, g:119, b:87 },  lightB: { r:123, g:107, b:160 },
-      darkA:  { r:255, g:140, b:90 },  darkB:  { r:180, g:142, b:255 },
-    }
-  ];
-  configs.forEach(c => createDNAHelix(c));
-
-  // Close tooltip on click outside canvas
-  document.addEventListener('pointerdown', e => {
-    if (!e.target.closest('.dna-canvas-wrap') && !(dnaTooltip && dnaTooltip.contains(e.target))) {
-      hideDNATooltip();
-    }
   });
 }
 
-/* ==================== CAREER TIMELINE (horizontal) ==================== */
-function initCareerTimeline() {
-  const track = document.getElementById('careerTrack');
-  if (!track) return;
+// ==================== SELECTED WORK ====================
+const PUB_ROLES = Object.fromEntries(SELECTED_WORK.map(w => [w.doi.toLowerCase(), w.role]));
+const PUB_PATHOGEN = Object.fromEntries(SELECTED_WORK.map(w => [w.doi.toLowerCase(), w.pathogen]));
+const PREPRINT_SERVERS = Object.fromEntries(SELECTED_WORK.filter(w => w.server).map(w => [w.doi.toLowerCase(), w.server]));
+const pubRole = (doi) => (doi ? PUB_ROLES[doi.toLowerCase()] || null : null);
+const preprintServer = (doi) => (doi && PREPRINT_SERVERS[doi.toLowerCase()]) || '';
 
-  const entries = [
-    { type: 'edu', year: 2015, date: '2015 – 2019', title: 'BSc in Biology', sub: 'University of Valencia', detail: 'Molecular biology & genetics foundation', icon: 'fa-seedling' },
-    { type: 'edu', year: 2019, date: '2019 – 2021', title: 'MSc in Bioinformatics', sub: 'University of Valencia', detail: 'Genomics, phylogenetics & computational biology', icon: 'fa-dna' },
-    { type: 'exp', year: 2020, date: 'Nov 2020 – Jun 2021', title: 'Research Technician', sub: 'Univ. Valencia – I2SysBio', detail: 'Bioinformatics analysis of pathogen genomes', icon: 'fa-microscope' },
-    { type: 'exp', year: 2021, date: 'Jul 2021 – Present', title: 'Research Technician', sub: 'CSIC – I2SysBio (PathoGenOmics Lab)', detail: 'Genomic surveillance, pipeline development, NGS analysis', icon: 'fa-flask-vial', active: true },
-    { type: 'edu', year: 2022, date: '2022 – 2026', title: 'PhD in Biodiversity & Evolutionary Biology', sub: 'University of Valencia', detail: 'M. tuberculosis lineage diversity and drug resistance evolution', icon: 'fa-graduation-cap', active: true },
-  ];
+function renderSelectedWork() {
+  const list = document.getElementById('selectedList');
+  if (!list) return;
+  list.innerHTML = SELECTED_WORK.map(w => {
+    const color = w.pathogen === 'cov' ? 'var(--sage)' : 'var(--terra)';
+    const links = [
+      `<a class="chip" style="--c:${color}" href="https://doi.org/${w.doi}" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> ${w.preprint ? 'preprint' : 'paper'}</a>`,
+      ...(w.links || []).map(l => `<a class="chip" style="--c:${color}" href="${l.url}" target="_blank" rel="noopener"><i class="${l.icon}" aria-hidden="true"></i> ${l.label.toLowerCase()}</a>`),
+    ].join('');
+    return `
+      <li class="entry">
+        <span class="entry-year">${w.year}</span>
+        <div>
+          <p class="entry-venue">${w.venue}</p>
+          <h4>${w.title}</h4>
+          <p class="entry-summary">${w.summary}</p>
+          <div class="chips">${links}</div>
+        </div>
+        <span class="stamp">${w.role}</span>
+      </li>`;
+  }).join('');
+}
 
-  // Build 3 flex rows: above (cards for edu, years for exp), dots, below (cards for exp, years for edu)
-  const rowAbove = document.createElement('div');
-  rowAbove.className = 'tl-row tl-row-above';
-  const rowDots = document.createElement('div');
-  rowDots.className = 'tl-row tl-row-dots';
-  const rowBelow = document.createElement('div');
-  rowBelow.className = 'tl-row tl-row-below';
+// ==================== FEATURED TOOLS ====================
+const LANG_COLORS = {
+  Python: '#3572A5', R: '#198CE7', HTML: '#E34C26', JavaScript: '#C9A227', Shell: '#5FA83F',
+  Jupyter: '#DA5B0B', Nextflow: '#3AA876', Perl: '#0298c3', CSS: '#563d7c', Dockerfile: '#384d54',
+  Makefile: '#427819', TypeScript: '#3178c6', Rust: '#C7825A',
+};
+const TOOL_DL_CACHE_KEY = 'tool_downloads_v1';
+let toolDownloads = {};
 
-  const cardEls = [];
-  entries.forEach((e, i) => {
-    const isEdu = e.type === 'edu';
-    const side = isEdu ? 'above' : 'below';
+function renderFeaturedTools() {
+  const grid = document.getElementById('toolGrid');
+  if (!grid) return;
+  grid.innerHTML = FEATURED_TOOLS.map(t => {
+    const color = LANG_COLORS[t.lang] || '#8b8b8b';
+    const links = [];
+    if (t.bioconda) links.push(`<a class="tool-link" href="https://anaconda.org/bioconda/${t.bioconda}" target="_blank" rel="noopener" title="conda install -c bioconda ${t.bioconda}"><i class="fas fa-box" aria-hidden="true"></i> Bioconda</a>`);
+    if (t.cran) links.push(`<a class="tool-link" href="https://cran.r-project.org/package=${t.cran}" target="_blank" rel="noopener" title="install.packages(&quot;${t.cran}&quot;)"><i class="fab fa-r-project" aria-hidden="true"></i> CRAN</a>`);
+    if (t.docs) links.push(`<a class="tool-link" href="${t.docs}" target="_blank" rel="noopener"><i class="fas fa-book" aria-hidden="true"></i> Docs</a>`);
+    if (t.repo) links.push(`<a class="tool-link" href="${t.repo}" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i> Code</a>`);
+    return `
+      <article class="tool-card">
+        <div class="tool-head">
+          <h4 class="tool-name">${t.name}</h4>
+          <span class="tool-head-meta">
+            ${t.bioconda ? `<span class="tool-dl" data-pkg="${t.bioconda}"></span>` : ''}
+            <span class="tool-lang"><span class="lang-dot" style="background:${color}"></span>${t.lang}</span>
+          </span>
+        </div>
+        <span class="tool-tag">${t.tag}</span>
+        <p class="tool-desc">${t.desc}</p>
+        <div class="tool-foot">${links.join('')}</div>
+      </article>`;
+  }).join('');
+}
 
-    const cardHTML = `
-      <div class="tl-card ${e.type} ${side}" data-col="${i}">
-        <div class="tl-card-icon ${e.type}"><i class="fas ${e.icon}"></i></div>
-        <div class="tl-card-date ${e.type}">${e.date}</div>
-        <div class="tl-card-title">${e.title}</div>
-        <div class="tl-card-sub">${e.sub}</div>
-        ${e.detail ? `<div class="tl-card-detail">${e.detail}</div>` : ''}
-      </div>`;
+// Shields.io serves Bioconda download counts as CORS-enabled JSON ("3.7k").
+function parseCompactCount(s) {
+  const m = /^(\d+(?:\.\d+)?)([kMG]?)$/.exec(String(s || '').trim());
+  if (!m) return null;
+  return parseFloat(m[1]) * { '': 1, k: 1e3, M: 1e6, G: 1e9 }[m[2]];
+}
 
-    const yearHTML = `<span class="tl-year ${e.type}">${e.year}</span>`;
+async function fetchToolDownloads() {
+  const pkgs = FEATURED_TOOLS.filter(t => t.bioconda).map(t => t.bioconda);
+  let data = cacheGet(TOOL_DL_CACHE_KEY);
+  if (!data) {
+    data = {};
+    await Promise.all(pkgs.map(async pkg => {
+      try {
+        const res = await fetch(`https://img.shields.io/conda/dn/bioconda/${pkg}.json`);
+        if (!res.ok) return;
+        const j = await res.json();
+        const value = j.value || j.message;
+        if (parseCompactCount(value) !== null) data[pkg] = value;
+      } catch { /* leave the badge without a number */ }
+    }));
+    if (Object.keys(data).length === pkgs.length) cacheSet(TOOL_DL_CACHE_KEY, data);
+  }
+  toolDownloads = data;
 
-    // Above column: edu → card, exp → year
-    const aboveCol = document.createElement('div');
-    aboveCol.innerHTML = isEdu ? cardHTML : yearHTML;
-    rowAbove.appendChild(aboveCol);
-
-    // Dot column
-    const dotCol = document.createElement('div');
-    dotCol.innerHTML = `<div class="tl-dot ${e.type}${e.active ? ' active' : ''}"></div>`;
-    // Mobile-only card clone
-    const mobileCard = document.createElement('div');
-    mobileCard.className = `tl-card ${e.type} below tl-mobile-card`;
-    mobileCard.setAttribute('data-col', i);
-    mobileCard.style.display = 'none';
-    mobileCard.innerHTML = `
-      <div class="tl-card-icon ${e.type}"><i class="fas ${e.icon}"></i></div>
-      <div class="tl-card-date ${e.type}">${e.date}</div>
-      <div class="tl-card-title">${e.title}</div>
-      <div class="tl-card-sub">${e.sub}</div>
-      ${e.detail ? `<div class="tl-card-detail">${e.detail}</div>` : ''}`;
-    dotCol.appendChild(mobileCard);
-    rowDots.appendChild(dotCol);
-
-    // Below column: exp → card, edu → year
-    const belowCol = document.createElement('div');
-    belowCol.innerHTML = !isEdu ? cardHTML : yearHTML;
-    rowBelow.appendChild(belowCol);
-
-    // Collect card elements for observer
-    const cardEl = (isEdu ? aboveCol : belowCol).querySelector('.tl-card');
-    if (cardEl) cardEls.push(cardEl);
+  let total = 0;
+  pkgs.forEach(pkg => {
+    if (!data[pkg]) return;
+    total += parseCompactCount(data[pkg]);
+    const el = document.querySelector(`.tool-dl[data-pkg="${pkg}"]`);
+    if (el) {
+      el.innerHTML = `${spriteSVG('download', 2)}${data[pkg]}`;
+      el.title = `${data[pkg]} downloads from Bioconda`;
+      el.setAttribute('aria-label', `${data[pkg]} downloads from Bioconda`);
+    }
   });
 
-  track.appendChild(rowAbove);
-  track.appendChild(rowDots);
-  track.appendChild(rowBelow);
-
-  // Add legend
-  const legend = document.createElement('div');
-  legend.className = 'tl-legend';
-  legend.innerHTML = `
-    <div class="tl-legend-item"><div class="tl-legend-dot edu"></div> Education</div>
-    <div class="tl-legend-item"><div class="tl-legend-dot exp"></div> Experience</div>
-  `;
-  track.parentElement.appendChild(legend);
-
-  // Reveal cards with IntersectionObserver
-  const observer = new IntersectionObserver((obs) => {
-    obs.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
-  cardEls.forEach(el => observer.observe(el));
-
-  // Mobile: show card inside dot column, above/below rows hidden via CSS
-  const mobileQuery = window.matchMedia('(max-width: 768px)');
-  function handleMobile(mq) {
-    track.querySelectorAll('.tl-mobile-card').forEach(mc => {
-      mc.style.display = mq.matches ? 'block' : 'none';
-    });
-  }
-  mobileQuery.addEventListener('change', handleMobile);
-  handleMobile(mobileQuery);
-
-  // Expandable toggle
-  const container = track.closest('.career-timeline');
-  if (container) {
-    container.classList.add('expanded');
-    const header = container.querySelector('.career-timeline-header');
-    header.addEventListener('click', () => {
-      container.classList.toggle('expanded');
-    });
+  // Only claim a total when every package answered; otherwise the text
+  // written in the HTML stays.
+  if (Object.keys(data).length === pkgs.length && total > 0) {
+    const approx = Math.round(total / 100) * 100;
+    const words = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+    const focus = document.getElementById('focusDownloads');
+    if (focus) focus.textContent = `about ${approx.toLocaleString('en-US')}`;
+    const summary = document.getElementById('toolsSummary');
+    if (summary) summary.innerHTML = `${words[pkgs.length] || pkgs.length} tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about ${approx.toLocaleString('en-US')} times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.`;
+    statData.downloads = approx;
+    // same compact style as the per-tool counts from shields ("3.7k")
+    animateNumber('statDownloads', approx, n => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n)));
+  } else {
+    statData.downloadsFailed = true;
   }
 }
 
-function createDNAHelix(cfg) {
-  const canvas = document.getElementById(cfg.canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+// ==================== NEWS ====================
+const NEWS_COLORS = { Paper: ['var(--sage)', 'var(--sage-ink)'], Preprint: ['var(--blue)', 'var(--blue-ink)'], Update: ['var(--ochre)', 'var(--ochre-ink)'] };
 
-  const numPairs = Math.max(cfg.strandA.length, cfg.strandB.length);
-  let W = 0, H = 0;
-  let rotation = 0;
-  let particles = [];
-  let frame = 0;
-  let lastTime = 0;
-  let spawnAcc = 0;
-  let mouseX = -1000, mouseY = -1000;
-
-  // Drag state
-  let ptrDown = false;
-  let ptrMoved = false;
-  let ptrStartX = 0;
-  let rotAtStart = 0;
-  let momentum = 0;
-  let lastPtrX = 0;
-  let lastPtrTime = 0;
-
-  // Node positions for hit testing (updated each frame)
-  let nodePositions = [];
-
-  // Strand filtering
-  let activeStrand = 'both';
-  let strandAlphaA = 1, strandAlphaB = 1;
-
-  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-  const rgba = (c, a) => `rgba(${c.r},${c.g},${c.b},${a})`;
-  const white = { r:255, g:255, b:255 };
-
-  // ---- Pointer events: drag + click ----
-  canvas.addEventListener('pointerdown', e => {
-    ptrDown = true;
-    ptrMoved = false;
-    ptrStartX = e.clientX;
-    lastPtrX = e.clientX;
-    lastPtrTime = Date.now();
-    rotAtStart = rotation;
-    momentum = 0;
-    canvas.setPointerCapture(e.pointerId);
-    canvas.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-
-  canvas.addEventListener('pointermove', e => {
-    const r = canvas.getBoundingClientRect();
-    mouseX = e.clientX - r.left;
-    mouseY = e.clientY - r.top;
-    if (!ptrDown) return;
-    const dx = e.clientX - ptrStartX;
-    if (Math.abs(dx) > 3) ptrMoved = true;
-    if (ptrMoved) {
-      rotation = rotAtStart + dx * 0.008;
-      const now = Date.now();
-      const dt = Math.max(now - lastPtrTime, 1);
-      momentum = (e.clientX - lastPtrX) * 0.008 / Math.max(dt / 16, 1);
-      lastPtrX = e.clientX;
-      lastPtrTime = now;
-      hideDNATooltip();
-    }
-  });
-
-  canvas.addEventListener('pointerup', e => {
-    if (!ptrDown) return;
-    ptrDown = false;
-    canvas.style.cursor = 'grab';
-    if (!ptrMoved) {
-      const r = canvas.getBoundingClientRect();
-      handleNodeClick(e.clientX - r.left, e.clientY - r.top, e.clientX, e.clientY);
-    }
-  });
-
-  canvas.addEventListener('pointerleave', () => { mouseX = -1000; mouseY = -1000; });
-
-  // Strand label click → filter to one strand
-  const card = canvas.closest('.dna-card');
-  if (card) {
-    const strandLabels = card.querySelectorAll('.dna-strand-label');
-    const dnaIcon = card.querySelector('.dna-header-icon');
-    strandLabels.forEach((label, idx) => {
-      label.addEventListener('click', e => {
-        if (!card.classList.contains('expanded')) return; // let click propagate to expand
-        e.stopPropagation();
-        const s = idx === 0 ? 'A' : 'B';
-        activeStrand = activeStrand === s ? 'both' : s;
-        strandLabels.forEach((l, i) => {
-          l.classList.toggle('dimmed', activeStrand !== 'both' && activeStrand !== (i === 0 ? 'A' : 'B'));
-        });
-      });
-    });
-    if (dnaIcon) {
-      dnaIcon.style.cursor = 'pointer';
-      dnaIcon.addEventListener('click', e => {
-        if (!card.classList.contains('expanded')) return; // let click propagate to expand
-        e.stopPropagation();
-        activeStrand = 'both';
-        strandLabels.forEach(l => l.classList.remove('dimmed'));
-      });
-    }
-  }
-
-  function handleNodeClick(mx, my, screenX, screenY) {
-    let closest = null;
-    let closestDist = Infinity;
-    for (const n of nodePositions) {
-      if (n.zN < 0.3) continue;
-      const nMul = n.strand === 'A' ? strandAlphaA : strandAlphaB;
-      if (nMul < 0.5) continue;
-      const dx = n.x - mx, dy = n.y - my;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const hitR = n.size + 14;
-      if (dist < hitR && dist < closestDist) {
-        closest = n;
-        closestDist = dist;
-      }
-    }
-    if (closest) {
-      const data = closest.strand === 'A' ? cfg.strandA[closest.index] : cfg.strandB[closest.index];
-      const dark = isDark();
-      const color = closest.strand === 'A' ? (dark ? cfg.darkA : cfg.lightA) : (dark ? cfg.darkB : cfg.lightB);
-      showDNATooltip(screenX, screenY, data, rgba(color, 1));
-    } else {
-      hideDNATooltip();
-    }
-  }
-
-  function resize() {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    W = rect.width;
-    H = window.innerWidth < 480 ? 300 : window.innerWidth < 768 ? 350 : 400;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  function draw(timestamp) {
-    if (W <= 0 || H <= 0) { resize(); requestAnimationFrame(draw); return; }
-    const dt = lastTime ? Math.min((timestamp - lastTime) / 16.667, 3) : 1;
-    lastTime = timestamp;
-
-    ctx.clearRect(0, 0, W, H);
-    const dark = isDark();
-    const cA = dark ? cfg.darkA : cfg.lightA;
-    const cB = dark ? cfg.darkB : cfg.lightB;
-    const cx = W / 2;
-
-    const helixR = Math.min(W * 0.14, 65);
-    const pairGap = Math.min(48, (H - 80) / numPairs);
-    const totalH = (numPairs - 1) * pairGap;
-    const startY = H / 2 - totalH / 2;
-    const angleStep = Math.PI * 2 / 5;
-
-    // Subtle center glow
-    const grad = ctx.createRadialGradient(cx, H / 2, 0, cx, H / 2, Math.max(W, H) * 0.45);
-    grad.addColorStop(0, rgba(cA, dark ? 0.04 : 0.025));
-    grad.addColorStop(0.5, rgba(cB, dark ? 0.025 : 0.015));
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Smooth strand alpha transition
-    const tgtA = (activeStrand === 'both' || activeStrand === 'A') ? 1 : 0.07;
-    const tgtB = (activeStrand === 'both' || activeStrand === 'B') ? 1 : 0.07;
-    strandAlphaA += (tgtA - strandAlphaA) * 0.1 * dt;
-    strandAlphaB += (tgtB - strandAlphaB) * 0.1 * dt;
-
-    // Draw backbones
-    drawBackbone(cx, startY, pairGap, helixR, angleStep, cA, cB, dark, strandAlphaA, strandAlphaB);
-
-    // Collect and sort base pairs by depth
-    let pairs = [];
-    for (let i = 0; i < numPairs; i++) {
-      const angle = rotation + i * angleStep;
-      const y = startY + i * pairGap;
-      const ax = cx + helixR * Math.cos(angle);
-      const az = helixR * Math.sin(angle);
-      const bx = cx + helixR * Math.cos(angle + Math.PI);
-      const bz = helixR * Math.sin(angle + Math.PI);
-      pairs.push({ i, y, ax, az, bx, bz });
-    }
-    pairs.sort((a, b) => Math.min(a.az, a.bz) - Math.min(b.az, b.bz));
-
-    // Reset node positions for hit testing
-    nodePositions = [];
-
-    // Draw pairs back-to-front
-    pairs.forEach(p => {
-      const labelA = cfg.strandA[p.i]?.label || '';
-      const labelB = cfg.strandB[p.i]?.label || '';
-      const bondZN = ((p.az + p.bz) / 2 + helixR) / (2 * helixR);
-
-      // Hydrogen bond (dashed line)
-      const bondMul = Math.min(strandAlphaA, strandAlphaB);
-      ctx.save();
-      ctx.setLineDash([3, 5]);
-      const bondAlpha = (0.06 + bondZN * 0.22) * (dark ? 1.4 : 1) * bondMul;
-      ctx.strokeStyle = dark ? rgba(white, bondAlpha * 0.5) : rgba({ r:100, g:100, b:100 }, bondAlpha);
-      ctx.lineWidth = 1 + bondZN * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(p.ax, p.y);
-      ctx.lineTo(p.bx, p.y);
-      ctx.stroke();
-      ctx.restore();
-
-      // Track node positions
-      const zNA = (p.az + helixR) / (2 * helixR);
-      const zNB = (p.bz + helixR) / (2 * helixR);
-      const sA = (3 + zNA * 7) * (1 + Math.sin(frame * 0.03 + p.az * 0.1) * 0.12);
-      const sB = (3 + zNB * 7) * (1 + Math.sin(frame * 0.03 + p.bz * 0.1) * 0.12);
-      nodePositions.push({ x: p.ax, y: p.y, size: sA, index: p.i, strand: 'A', zN: zNA });
-      nodePositions.push({ x: p.bx, y: p.y, size: sB, index: p.i, strand: 'B', zN: zNB });
-
-      // Draw back node first, then front node
-      if (p.az > p.bz) {
-        drawNode(p.bx, p.y, p.bz, labelB, cB, dark, helixR, cx, strandAlphaB);
-        drawNode(p.ax, p.y, p.az, labelA, cA, dark, helixR, cx, strandAlphaA);
-      } else {
-        drawNode(p.ax, p.y, p.az, labelA, cA, dark, helixR, cx, strandAlphaA);
-        drawNode(p.bx, p.y, p.bz, labelB, cB, dark, helixR, cx, strandAlphaB);
-      }
-    });
-
-    // Particles
-    drawParticles(dark, dt);
-
-    // Spawn particles from random bases
-    spawnAcc += dt;
-    if (spawnAcc >= 6 && particles.length < 100) {
-      spawnAcc -= 6;
-      const i = Math.floor(Math.random() * numPairs);
-      const angle = rotation + i * angleStep;
-      const y = startY + i * pairGap;
-      const strand = activeStrand === 'A' ? false : activeStrand === 'B' ? true : Math.random() < 0.5;
-      const offset = strand ? Math.PI : 0;
-      const px = cx + helixR * Math.cos(angle + offset);
-      const color = strand ? cB : cA;
-      particles.push({
-        x: px, y: y,
-        vx: (Math.random() - 0.5) * 1.4,
-        vy: -0.2 - Math.random() * 0.9,
-        life: 1,
-        decay: 0.006 + Math.random() * 0.014,
-        size: 1 + Math.random() * 2.5,
-        color: color
-      });
-    }
-
-    frame += dt;
-
-    // Rotation: drag → momentum → auto-rotate
-    if (ptrDown) {
-      // rotation set by pointer handler
-    } else if (Math.abs(momentum) > 0.0003) {
-      rotation += momentum * dt;
-      momentum *= Math.pow(0.95, dt);
-    } else {
-      momentum = 0;
-      rotation += 0.006 * animSpeed * dt;
-    }
-
-    requestAnimationFrame(draw);
-  }
-
-  function drawBackbone(cx, startY, pairGap, helixR, angleStep, cA, cB, dark, mulA, mulB) {
-    const segs = numPairs * 12;
-    for (let strand = 0; strand < 2; strand++) {
-      const offset = strand * Math.PI;
-      const color = strand === 0 ? cA : cB;
-      const mul = strand === 0 ? mulA : mulB;
-      for (let s = 0; s < segs; s++) {
-        const t1 = s / segs * (numPairs - 1);
-        const t2 = (s + 1) / segs * (numPairs - 1);
-        const a1 = rotation + t1 * angleStep + offset;
-        const a2 = rotation + t2 * angleStep + offset;
-        const wave1 = Math.sin(frame * 0.02 + t1 * 0.5) * 1.5;
-        const wave2 = Math.sin(frame * 0.02 + t2 * 0.5) * 1.5;
-        const x1 = cx + (helixR + wave1) * Math.cos(a1);
-        const y1 = startY + t1 * pairGap;
-        const z1 = helixR * Math.sin(a1);
-        const x2 = cx + (helixR + wave2) * Math.cos(a2);
-        const y2 = startY + t2 * pairGap;
-        const z2 = helixR * Math.sin(a2);
-        const zN = ((z1 + z2) / 2 + helixR) / (2 * helixR);
-        const alpha = (0.07 + zN * 0.38) * (dark ? 1.5 : 1) * mul;
-        const lw = 1 + zN * 2.5;
-        if (dark && mul > 0.3) {
-          ctx.shadowColor = rgba(color, 0.25 * zN * mul);
-          ctx.shadowBlur = 3 + zN * 8;
-        }
-        ctx.strokeStyle = rgba(color, alpha);
-        ctx.lineWidth = lw;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-    }
-  }
-
-  function drawNode(x, y, z, label, color, dark, helixR, cx, mul) {
-    if (mul === undefined) mul = 1;
-    const zN = (z + helixR) / (2 * helixR);
-    const pulse = 1 + Math.sin(frame * 0.03 + z * 0.1) * 0.12;
-    let size = (3 + zN * 7) * pulse;
-    const alpha = (0.15 + zN * 0.85) * mul;
-
-    // Mouse hover effect
-    const dx = x - mouseX, dy = y - mouseY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const hover = Math.max(0, 1 - dist / 50);
-    if (hover > 0) size *= 1 + hover * 0.6;
-
-    // Glow
-    if (dark && mul > 0.3) {
-      ctx.shadowColor = rgba(color, (0.4 + hover * 0.4) * zN * mul);
-      ctx.shadowBlur = 6 + zN * 16 + hover * 10;
-    }
-
-    // Outer glow ring
-    if (zN > 0.35) {
-      const glowR = size + 3 + zN * 4 + hover * 6;
-      ctx.fillStyle = rgba(color, alpha * 0.12 + hover * 0.08);
-      ctx.beginPath();
-      ctx.arc(x, y, glowR, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Main node
-    ctx.fillStyle = rgba(color, alpha);
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner bright spot
-    ctx.fillStyle = rgba(white, alpha * 0.35);
-    ctx.beginPath();
-    ctx.arc(x - size * 0.15, y - size * 0.15, size * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-
-    // Label
-    if (zN > 0.2 && label && mul > 0.25) {
-      const fontSize = Math.round(8 + zN * 5);
-      const labelAlpha = Math.pow(Math.max(0, (zN - 0.2) / 0.8), 0.6) * mul;
-      ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
-      const isLeft = x < cx;
-      ctx.textAlign = isLeft ? 'right' : 'left';
-      ctx.textBaseline = 'middle';
-      const gap = size + 10;
-      const lx = isLeft ? x - gap : x + gap;
-
-      if (dark) {
-        ctx.shadowColor = rgba(color, 0.4 * labelAlpha);
-        ctx.shadowBlur = 10;
-      } else {
-        ctx.shadowColor = 'rgba(255,255,255,0.9)';
-        ctx.shadowBlur = 4;
-      }
-
-      ctx.fillStyle = rgba(color, labelAlpha * (dark ? 0.95 : 0.85) + hover * 0.15);
-      ctx.fillText(label, lx, y);
-      ctx.shadowBlur = 0;
-    }
-  }
-
-  function drawParticles(dark, dt) {
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.x += p.vx * animSpeed * dt;
-      p.y += p.vy * animSpeed * dt;
-      p.life -= p.decay * animSpeed * dt;
-      if (p.life <= 0) { particles.splice(i, 1); continue; }
-      const a = p.life * (dark ? 0.7 : 0.4);
-      const s = p.size * p.life;
-      if (dark) {
-        ctx.shadowColor = rgba(p.color, 0.5 * p.life);
-        ctx.shadowBlur = 6;
-      }
-      ctx.fillStyle = rgba(p.color, a);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-  }
-
-  resize();
-  draw();
-  window.addEventListener('resize', resize);
-
-  // ResizeObserver for expand/collapse
-  if (window.ResizeObserver) {
-    new ResizeObserver(() => resize()).observe(canvas.parentElement);
-  }
-}
-
-// ==================== ORCID + SEMANTIC SCHOLAR ====================
-function parseOrcidWorks(groups) {
-  const pubs = groups.map(g => {
-    const s = g['work-summary'][0];
-    const title = s.title?.title?.value || 'Untitled';
-    const journal = s['journal-title']?.value || '';
-    const year = s['publication-date']?.year?.value || '';
-    const month = s['publication-date']?.month?.value || '';
-    const extIds = s['external-ids']?.['external-id'] || [];
-    const doi = extIds.find(e => e['external-id-type'] === 'doi')?.['external-id-value'] || null;
-    return { title, journal, year, month, doi };
-  });
-  pubs.sort((a, b) => {
-    if (b.year !== a.year) return b.year - a.year;
-    return (b.month || 0) - (a.month || 0);
-  });
-  return pubs;
+function renderBlogPosts() {
+  const container = document.getElementById('blogList');
+  if (!container) return;
+  container.innerHTML = BLOG_POSTS.map(post => {
+    const d = new Date(post.date + 'T00:00:00');
+    const date = d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+    const [c, ink] = NEWS_COLORS[post.category] || ['var(--terra)', 'var(--terra-ink)'];
+    const links = (post.links || []).map(l =>
+      `<a class="chip" style="--c:${c}" href="${l.url}" target="_blank" rel="noopener"><i class="${l.icon}" aria-hidden="true"></i> ${l.label}</a>`).join('');
+    return `
+      <article class="diary-entry" style="--c:${c};--c-ink:${ink}">
+        <div class="diary-top">
+          <time class="diary-date" datetime="${post.date}">${date}</time>
+          <span class="diary-cat">${post.category}</span>
+        </div>
+        <h3>${post.title}</h3>
+        <p>${post.body}</p>
+        ${links ? `<div class="chips">${links}</div>` : ''}
+      </article>`;
+  }).join('');
 }
 
 // ==================== STAT BUBBLES ====================
-let statData = { pubs: 0, citations: 0, pathogens: [], langs: [] };
-let activeBubble = null; // track the currently open bubble
+let statData = { pubs: 0, citations: 0, pathogens: [], langs: [], downloads: 0 };
+let pubLoadFailed = false;
+let ghLoadFailed = false;
+let activeBubble = null;
 
 const PATHOGEN_ICONS = {
-  'SARS-CoV-2': 'fa-virus', 'M. tuberculosis': 'fa-bacterium',
-  'M. africanum': 'fa-bacterium', 'M. bovis': 'fa-bacterium',
-  'Mycobacterium spp.': 'fa-bacterium',
-  'P. algeriensis': 'fa-bacterium',
-  'M. brumae': 'fa-bacterium'
+  'SARS-CoV-2': 'fa-virus', 'M. tuberculosis': 'fa-bacterium', 'M. africanum': 'fa-bacterium', 'M. bovis': 'fa-bacterium',
+  'Mycobacterium spp.': 'fa-bacterium', 'P. algeriensis': 'fa-bacterium', 'M. brumae': 'fa-bacterium',
 };
+const bubbleWaiting = (failed, source) => `<div class="stat-bubble-sub">${failed ? `${source} is not answering right now. Try again later.` : 'loading...'}</div>`;
+
+function buildBubbleHTML(type) {
+  const title = (icon, text) => `<div class="stat-bubble-title"><i class="fas ${icon}" aria-hidden="true"></i> ${text}</div>`;
+  if (type === 'pubs') return title('fa-file-lines', 'publications') + `<div class="stat-bubble-big">${statData.pubs || '--'}</div><div class="stat-bubble-sub">works on ORCID, ${SELECTED_WORK.length} led by me</div>`;
+  if (type === 'citations') return title('fa-quote-right', 'citations') + `<div class="stat-bubble-big">${statData.citations || '--'}</div><div class="stat-bubble-sub">counted by Semantic Scholar</div>`;
+  if (type === 'downloads') {
+    const rows = FEATURED_TOOLS.filter(t => t.bioconda && toolDownloads[t.bioconda]).map(t => `<span>${t.name}</span><span>${toolDownloads[t.bioconda]}</span>`).join('');
+    return title('fa-download', 'Bioconda downloads') + (rows ? `<div class="stat-bubble-rows">${rows}</div>` : bubbleWaiting(statData.downloadsFailed, 'Bioconda'));
+  }
+  if (type === 'pathogens') {
+    const tags = statData.pathogens.length
+      ? statData.pathogens.map(p => `<span class="stat-bubble-tag"><i class="fas ${PATHOGEN_ICONS[p] || 'fa-disease'}" aria-hidden="true"></i> ${p}</span>`).join('')
+      : bubbleWaiting(pubLoadFailed, 'ORCID');
+    return title('fa-virus', 'pathogens in my papers') + `<div class="stat-bubble-tags">${tags}</div>`;
+  }
+  if (type === 'langs') {
+    const tags = statData.langs.length
+      ? statData.langs.map(l => `<span class="stat-bubble-tag"><span class="stat-bubble-dot" style="background:${LANG_COLORS[l] || '#8b8b8b'}"></span> ${l}</span>`).join('')
+      : bubbleWaiting(ghLoadFailed, 'GitHub');
+    return title('fa-code', 'languages in my repos') + `<div class="stat-bubble-tags">${tags}</div>`;
+  }
+  return '';
+}
 
 function closeBubble() {
   if (!activeBubble) return;
   const b = activeBubble;
   activeBubble = null;
   b.classList.remove('visible');
-  setTimeout(() => { if (b.parentNode) b.parentNode.removeChild(b); }, 400);
-}
-
-function buildBubbleHTML(type) {
-  if (type === 'pubs') {
-    return `<div class="stat-bubble-title"><i class="fas fa-file-alt"></i> Publications</div>
-            <div class="stat-bubble-big">${statData.pubs || '--'}</div>
-            <div class="stat-bubble-sub">papers indexed in ORCID</div>`;
-  }
-  if (type === 'citations') {
-    return `<div class="stat-bubble-title"><i class="fas fa-quote-right"></i> Citations</div>
-            <div class="stat-bubble-big">${statData.citations || '--'}</div>
-            <div class="stat-bubble-sub">via Semantic Scholar</div>`;
-  }
-  if (type === 'pathogens') {
-    const tags = statData.pathogens.length
-      ? statData.pathogens.map(p => `<span class="stat-bubble-tag"><i class="fas ${PATHOGEN_ICONS[p] || 'fa-disease'}"></i> ${p}</span>`).join('')
-      : '<div class="stat-bubble-sub">Loading...</div>';
-    return `<div class="stat-bubble-title"><i class="fas fa-virus"></i> Pathogens detected</div>
-            <div class="stat-bubble-tags">${tags}</div>`;
-  }
-  if (type === 'langs') {
-    const tags = statData.langs.length
-      ? statData.langs.map(l => `<span class="stat-bubble-tag stat-bubble-tag--lang"><span class="stat-bubble-dot" style="background:${LANG_COLORS[l] || '#8b8b8b'}"></span> ${l}</span>`).join('')
-      : '<div class="stat-bubble-sub">Loading...</div>';
-    return `<div class="stat-bubble-title"><i class="fas fa-code"></i> Languages</div>
-            <div class="stat-bubble-tags">${tags}</div>`;
-  }
-  return '';
+  setTimeout(() => b.remove(), 250);
 }
 
 function openBubble(card) {
-  const type = card.dataset.stat;
   const bubble = document.createElement('div');
   bubble.className = 'stat-bubble';
-  bubble.dataset.stat = type;
-  bubble.innerHTML = buildBubbleHTML(type);
-
-  // Prevent clicks inside bubble from closing it
-  bubble.onmousedown = function(e) { e.stopPropagation(); };
-  bubble.onclick = function(e) { e.stopPropagation(); };
-
+  bubble.dataset.stat = card.dataset.stat;
+  bubble.setAttribute('role', 'status');
+  bubble.innerHTML = buildBubbleHTML(card.dataset.stat);
+  bubble.addEventListener('click', e => e.stopPropagation());
   document.body.appendChild(bubble);
-
-  // Position above the card
-  const rect = card.getBoundingClientRect();
-  bubble.style.left = (rect.left + rect.width / 2) + 'px';
-  bubble.style.top = (rect.top - 12) + 'px';
-
+  const r = card.getBoundingClientRect();
+  const half = bubble.offsetWidth / 2;
+  bubble.style.left = Math.min(Math.max(r.left + r.width / 2, half + 8), window.innerWidth - half - 8) + 'px';
+  bubble.style.top = r.top + 'px';
   activeBubble = bubble;
-
-  // Trigger animation on next frame
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      bubble.classList.add('visible');
-    });
-  });
+  requestAnimationFrame(() => requestAnimationFrame(() => bubble.classList.add('visible')));
 }
 
 function initStatBubbles() {
-  const cards = document.querySelectorAll('.stat-card[data-stat]');
-
-  cards.forEach(card => {
-    // Use mousedown + click to ensure we catch the event
-    card.addEventListener('click', function(e) {
-      e.preventDefault();
+  document.querySelectorAll('.stat[data-stat]').forEach(card => {
+    card.addEventListener('click', (e) => {
       e.stopPropagation();
-      e.stopImmediatePropagation();
-
-      const type = card.dataset.stat;
-      const wasOpen = activeBubble && activeBubble.dataset.stat === type;
-
+      const wasOpen = activeBubble && activeBubble.dataset.stat === card.dataset.stat;
       closeBubble();
-
-      if (!wasOpen) {
-        // Small delay if we just closed one, otherwise immediate
-        openBubble(card);
-      }
+      if (!wasOpen) openBubble(card);
+    });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
     });
   });
-
-  // Close bubble when clicking anywhere else
-  document.addEventListener('click', function(e) {
-    if (activeBubble && !e.target.closest('.stat-card[data-stat]')) {
-      closeBubble();
-    }
-  });
-
-  // Close on scroll
-  window.addEventListener('scroll', function() {
-    if (activeBubble) closeBubble();
-  }, { passive: true });
+  document.addEventListener('click', () => closeBubble());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBubble(); });
+  window.addEventListener('scroll', () => closeBubble(), { passive: true });
 }
 
-// ==================== PATHOGEN DETECTION ====================
+// ==================== PATHOGENS & TOPICS ====================
 const PATHOGEN_PATTERNS = [
   { pattern: /sars.?cov.?2|covid.?19|coronavirus/i, name: 'SARS-CoV-2' },
   { pattern: /mycobacterium\s+tuberculosis|m\.\s*tuberculosis|\bMTB\b|\btb\b/i, name: 'M. tuberculosis' },
@@ -1278,737 +453,538 @@ const PATHOGEN_PATTERNS = [
   { pattern: /legionella/i, name: 'Legionella' },
   { pattern: /pseudochrobactrum|p\.\s*algeriensis/i, name: 'P. algeriensis' },
 ];
-
 function detectPathogens(pubs) {
   const found = new Set();
   for (const pub of pubs) {
     const text = `${pub.title} ${pub.journal}`;
-    for (const { pattern, name } of PATHOGEN_PATTERNS) {
-      if (pattern.test(text)) found.add(name);
-    }
+    for (const { pattern, name } of PATHOGEN_PATTERNS) if (pattern.test(text)) found.add(name);
   }
   return found;
 }
+// Colour of a paper in the track: the pathogen it is about
+function pathogenOf(pub) {
+  const known = pub.doi && PUB_PATHOGEN[pub.doi.toLowerCase()];
+  if (known) return known;
+  const text = `${pub.title} ${pub.journal}`;
+  if (/sars.?cov.?2|covid|coronavirus/i.test(text)) return 'cov';
+  if (/tuberculosis|mycobacter|\bMTBC?\b/i.test(text)) return 'tb';
+  return 'other';
+}
 
-// ==================== KEYWORD EXTRACTION ====================
 const KEYWORD_PATTERNS = [
-  { pattern: /sars.?cov.?2|covid.?19/i, label: 'SARS-CoV-2', icon: 'fa-virus' },
-  { pattern: /tuberculosis|\bMTB\b|\btb\b/i, label: 'Tuberculosis', icon: 'fa-bacterium' },
-  { pattern: /mycobacterium/i, label: 'Mycobacterium', icon: 'fa-bacterium' },
-  { pattern: /phylogen/i, label: 'Phylogenetics', icon: 'fa-sitemap' },
-  { pattern: /genom/i, label: 'Genomics', icon: 'fa-dna' },
-  { pattern: /epidemiol|surveillance/i, label: 'Epidemiology', icon: 'fa-chart-line' },
-  { pattern: /bioinformatics|pipeline|workflow/i, label: 'Bioinformatics', icon: 'fa-laptop-code' },
-  { pattern: /variant|mutation|lineage/i, label: 'Variants', icon: 'fa-code-branch' },
-  { pattern: /resistance|antimicrobial|antibiotic/i, label: 'AMR', icon: 'fa-shield-alt' },
-  { pattern: /sequenc/i, label: 'Sequencing', icon: 'fa-microscope' },
+  { pattern: /sars.?cov.?2|covid.?19/i, label: 'SARS-CoV-2', icon: 'fa-virus', color: 'var(--sage)' },
+  { pattern: /tuberculosis|\bMTB\b|\btb\b/i, label: 'Tuberculosis', icon: 'fa-bacterium', color: 'var(--terra)' },
+  { pattern: /mycobacterium/i, label: 'Mycobacterium', icon: 'fa-bacterium', color: 'var(--terra-soft)' },
+  { pattern: /phylogen/i, label: 'Phylogenetics', icon: 'fa-sitemap', color: 'var(--blue)' },
+  { pattern: /genom/i, label: 'Genomics', icon: 'fa-dna', color: 'var(--ochre)' },
+  { pattern: /epidemiol|surveillance/i, label: 'Epidemiology', icon: 'fa-chart-line', color: 'var(--plum)' },
+  { pattern: /bioinformatics|pipeline|workflow/i, label: 'Bioinformatics', icon: 'fa-laptop-code', color: 'var(--blue-soft)' },
+  { pattern: /variant|mutation|lineage/i, label: 'Variants', icon: 'fa-code-branch', color: 'var(--sage-soft)' },
+  { pattern: /resistance|antimicrobial|antibiotic/i, label: 'AMR', icon: 'fa-shield-halved', color: 'var(--terra)' },
+  { pattern: /sequenc/i, label: 'Sequencing', icon: 'fa-microscope', color: 'var(--ochre-soft)' },
 ];
-
 function extractKeywords(pub) {
   const text = `${pub.title} ${pub.journal}`;
   const kws = [];
-  for (const { pattern, label } of KEYWORD_PATTERNS) {
-    if (pattern.test(text) && !kws.includes(label)) kws.push(label);
-  }
+  for (const { pattern, label } of KEYWORD_PATTERNS) if (pattern.test(text) && !kws.includes(label)) kws.push(label);
   return kws;
 }
 
-// ==================== PUBLICATION CHARTS ====================
-let pubChartData = { yearCounts: {}, topicCounts: {}, pubs: [], pubKeywords: [] };
+// ==================== PUBLICATIONS ====================
+let pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+let pubStaticFiltersBound = false;
+let pubData = { pubs: [], keywords: [] };
 
-function buildCharts(pubs, pubKeywords) {
-  // Store data for filter updates
-  pubChartData.pubs = pubs;
-  pubChartData.pubKeywords = pubKeywords;
-
-  // Compute initial (unfiltered) data
-  const yearCounts = {};
-  const topicCounts = {};
-  pubs.forEach((pub, i) => {
-    if (pub.year) yearCounts[pub.year] = (yearCounts[pub.year] || 0) + 1;
-    pubKeywords[i].forEach(kw => {
-      topicCounts[kw] = (topicCounts[kw] || 0) + 1;
-    });
-  });
-  pubChartData.yearCounts = yearCounts;
-  pubChartData.topicCounts = topicCounts;
-
-  renderYearChart(yearCounts, null);
-  renderTopicChart(topicCounts, null);
+function pubMatches(i, ignore = '') {
+  const { year, keyword, search, led } = pubFilterState;
+  const pub = pubData.pubs[i];
+  const q = search.toLowerCase().trim();
+  if (ignore !== 'year' && year !== 'all' && String(pub.year) !== year) return false;
+  if (ignore !== 'keyword' && keyword !== 'all' && !pubData.keywords[i].includes(keyword)) return false;
+  if (led && !pubRole(pub.doi)) return false;
+  if (q) {
+    const text = `${pub.title} ${pub.journal} ${preprintServer(pub.doi)} ${pubRole(pub.doi) || ''}`.toLowerCase();
+    if (!text.includes(q)) return false;
+  }
+  return true;
 }
 
-function renderYearChart(counts, activeYear) {
-  const container = document.getElementById('chartYearBars');
-  if (!container) return;
+function applyPubFilters() {
+  let visible = 0;
+  document.querySelectorAll('.pub-item').forEach(item => {
+    const show = pubMatches(+item.dataset.idx);
+    item.hidden = !show;
+    if (show) visible++;
+  });
+  const none = document.getElementById('pubNoResults');
+  if (none) none.style.display = visible === 0 && pubData.pubs.length ? 'block' : 'none';
+  updatePubStatus(visible);
+  updateTrack();
+  updateTopicChart();
+}
 
-  const years = Object.keys(counts).sort((a, b) => b - a);
-  const max = Math.max(...Object.values(counts), 1);
+// What is filtered, and one button to undo it all
+function updatePubStatus(visible) {
+  const el = document.getElementById('pubStatus');
+  if (!el) return;
+  const { year, keyword, search, led } = pubFilterState;
+  const active = [
+    year !== 'all' ? year : '',
+    keyword !== 'all' ? keyword : '',
+    led ? 'first author' : '',
+    search.trim() ? `"${search.trim()}"` : '',
+  ].filter(Boolean);
+  el.hidden = !active.length;
+  if (!active.length) { el.innerHTML = ''; return; }
+  // spaces between the pieces so a screen reader does not run "16" and "2021" together
+  el.innerHTML = `<span>showing <b>${visible}</b> of ${pubData.pubs.length}</span> <span class="sr-only">papers, filtered by</span> ` +
+    active.map(a => `<span class="pub-token">${escapeHtml(a)}</span>`).join(' ') +
+    ' <button type="button" class="refresh-btn" data-clear><i class="fas fa-xmark" aria-hidden="true"></i> clear filters</button>';
+}
 
-  container.innerHTML = years.map(year => {
-    const count = counts[year];
-    const pct = (count / max) * 100;
-    const isActive = activeYear && activeYear === year;
-    const isDimmed = activeYear && activeYear !== 'all' && activeYear !== year;
-    return `
-      <div class="chart-bar-row${isActive ? ' active' : ''}" data-chart-year="${year}">
-        <span class="chart-bar-label">${year}</span>
-        <div class="chart-bar-track">
-          <div class="chart-bar-fill year${isDimmed ? ' dimmed' : ''}" style="width:${pct}%"></div>
-        </div>
-        <span class="chart-bar-count">${count}</span>
-      </div>`;
-  }).join('');
+function clearPubFilters() {
+  pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+  const search = document.getElementById('pubSearch');
+  if (search) search.value = '';
+  document.getElementById('pubLedToggle')?.setAttribute('aria-pressed', 'false');
+  applyPubFilters();
+}
 
-  // Click to filter by year
-  container.querySelectorAll('.chart-bar-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const yr = row.dataset.chartYear;
-      // Toggle: if already active, go back to 'all'
-      const newYear = pubFilterState.year === yr ? 'all' : yr;
-      pubFilterState.year = newYear;
-      // Sync year filter buttons
-      document.querySelectorAll('.pub-filter-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.year === newYear);
-      });
-      applyPubFilters();
+function setYear(y) { pubFilterState.year = pubFilterState.year === y ? 'all' : y; applyPubFilters(); }
+function setKeyword(k) { pubFilterState.keyword = pubFilterState.keyword === k ? 'all' : k; applyPubFilters(); }
+
+function initPubFilters() {
+  if (pubStaticFiltersBound) return;
+  pubStaticFiltersBound = true;
+  const search = document.getElementById('pubSearch');
+  if (search) {
+    let t;
+    search.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => { pubFilterState.search = search.value; applyPubFilters(); }, 180);
     });
+  }
+  const led = document.getElementById('pubLedToggle');
+  if (led) led.addEventListener('click', () => {
+    pubFilterState.led = !pubFilterState.led;
+    led.setAttribute('aria-pressed', pubFilterState.led ? 'true' : 'false');
+    applyPubFilters();
+  });
+  document.getElementById('pubStatus')?.addEventListener('click', e => {
+    if (!e.target.closest('[data-clear]')) return;
+    clearPubFilters();
+    document.getElementById('pubSearch')?.focus();
   });
 }
 
-function renderTopicChart(counts, activeKeyword) {
+// Papers as a genome-browser track: one block per paper, stacked by year,
+// coloured by pathogen and filled when I led it.
+function renderPapersTrack() {
+  const track = document.getElementById('papersTrack');
+  if (!track) return;
+  const pubs = pubData.pubs;
+  const years = pubs.map(p => +p.year).filter(Boolean);
+  if (!years.length) return;
+  const y0 = Math.min(...years), y1 = Math.max(...years);
+  const cols = [];
+  for (let y = y0; y <= y1; y++) {
+    const idx = pubs.map((p, i) => (+p.year === y ? i : -1)).filter(i => i >= 0);
+    const blocks = idx.map(i => {
+      const p = pubs[i];
+      const role = pubRole(p.doi);
+      const venue = p.journal || preprintServer(p.doi) || 'preprint';
+      return `<button type="button" class="ptrack-block ${pathogenOf(p)}${role ? ' is-led' : ''}" data-idx="${i}" aria-label="${escapeHtml(`${y}, ${venue}: ${p.title}${role ? `, ${role.toLowerCase()}` : ''}`)}"></button>`;
+    }).join('');
+    cols.push(`<div class="ptrack-col" data-year="${y}"><span class="ptrack-count"></span>${blocks}<button type="button" class="ptrack-year" data-year="${y}" aria-pressed="false" aria-label="Show only ${y}">${y}</button></div>`);
+  }
+  track.style.setProperty('--years', y1 - y0 + 1);
+  track.innerHTML = cols.join('');
+  if (!document.querySelector('.ptrack-legend')) {
+    track.parentElement.insertAdjacentHTML('afterend', `<div class="ptrack-legend" aria-hidden="true">
+      <span><i style="--c:var(--terra)"></i>mycobacteria</span><span><i style="--c:var(--sage)"></i>SARS-CoV-2</span><span><i style="--c:var(--ochre)"></i>other</span><span><i class="fill" style="--c:var(--muted)"></i>led by me</span>
+      <span class="ptrack-hint">pick a year or a topic to filter</span></div>`);
+  }
+  track.addEventListener('click', e => {
+    const yb = e.target.closest('.ptrack-year');
+    if (yb) { setYear(yb.dataset.year); return; }
+    const b = e.target.closest('.ptrack-block');
+    if (!b) return;
+    const item = document.querySelector(`.pub-item[data-idx="${b.dataset.idx}"]`);
+    if (!item) return;
+    if (item.hidden) clearPubFilters();
+    item.scrollIntoView({ behavior: PREFERS_REDUCED_MOTION ? 'auto' : 'smooth', block: 'center' });
+    item.classList.remove('flash'); void item.offsetWidth; item.classList.add('flash');
+    hideNoteTip();
+  });
+  track.addEventListener('mouseover', e => {
+    const b = e.target.closest('.ptrack-block');
+    if (!b) return;
+    const p = pubs[+b.dataset.idx];
+    const r = b.getBoundingClientRect();
+    const role = pubRole(p.doi);
+    showNoteTip(r.left + r.width / 2, r.top, { title: p.title, year: `${p.year} · ${p.journal || preprintServer(p.doi) || 'preprint'}`, detail: role ? `${role}. Click to find it in the list.` : 'Click to find it in the list.' },
+      pathogenOf(p) === 'cov' ? cssVar('--sage') : pathogenOf(p) === 'tb' ? cssVar('--terra') : cssVar('--ochre'));
+  });
+  track.addEventListener('mouseleave', hideNoteTip);
+  updateTrack();
+}
+
+function updateTrack() {
+  document.querySelectorAll('.ptrack-col').forEach(col => {
+    let n = 0;
+    col.querySelectorAll('.ptrack-block').forEach(b => {
+      const on = pubMatches(+b.dataset.idx, 'year');
+      b.classList.toggle('dim', !on);
+      if (on) n++;
+    });
+    col.querySelector('.ptrack-count').textContent = n || '';
+    const yb = col.querySelector('.ptrack-year');
+    yb.setAttribute('aria-pressed', pubFilterState.year === col.dataset.year ? 'true' : 'false');
+  });
+}
+
+function updateTopicChart() {
   const container = document.getElementById('chartTopicBars');
-  if (!container) return;
-
+  if (!container || !pubData.pubs.length) return;
+  const counts = {};
+  pubData.pubs.forEach((p, i) => { if (pubMatches(i, 'keyword')) pubData.keywords[i].forEach(k => { counts[k] = (counts[k] || 0) + 1; }); });
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const max = Math.max(...sorted.map(e => e[1]), 1);
-
-  container.innerHTML = sorted.map(([label, count], i) => {
-    const pct = (count / max) * 100;
-    const kp = KEYWORD_PATTERNS.find(p => p.label === label);
-    const icon = kp ? kp.icon : 'fa-tag';
-    const isActive = activeKeyword && activeKeyword === label;
-    const isDimmed = activeKeyword && activeKeyword !== 'all' && activeKeyword !== label;
-    return `
-      <div class="chart-bar-row${isActive ? ' active' : ''}" data-chart-topic="${label}">
-        <span class="chart-bar-icon"><i class="fas ${icon}"></i></span>
-        <span class="chart-bar-label">${label}</span>
-        <div class="chart-bar-track">
-          <div class="chart-bar-fill topic-${i % 10}${isDimmed ? ' dimmed' : ''}" style="width:${pct}%"></div>
-        </div>
-        <span class="chart-bar-count">${count}</span>
-      </div>`;
+  const active = pubFilterState.keyword;
+  container.innerHTML = sorted.map(([label, count]) => {
+    const kp = KEYWORD_PATTERNS.find(p => p.label === label) || {};
+    const dim = active !== 'all' && active !== label;
+    return `<div class="bar-row${active === label ? ' active' : ''}" role="button" tabindex="0" data-topic="${label}" aria-pressed="${active === label}" aria-label="${label}, ${count} papers">
+      <span class="bar-icon"><i class="fas ${kp.icon || 'fa-tag'}" aria-hidden="true"></i></span>
+      <span class="bar-label">${label}</span>
+      <span class="bar-track"><span class="bar-fill${dim ? ' dimmed' : ''}" style="display:block;width:${(count / max) * 100}%;--bc:${kp.color || 'var(--terra)'}"></span></span>
+      <span class="bar-count">${count}</span></div>`;
   }).join('');
-
-  // Click to filter by topic
-  container.querySelectorAll('.chart-bar-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const kw = row.dataset.chartTopic;
-      const newKw = pubFilterState.keyword === kw ? 'all' : kw;
-      pubFilterState.keyword = newKw;
-      // Sync keyword filter buttons
-      document.querySelectorAll('.pub-keyword-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.keyword === newKw);
-      });
-      applyPubFilters();
-    });
+  container.querySelectorAll('.bar-row').forEach(row => {
+    row.addEventListener('click', () => setKeyword(row.dataset.topic));
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKeyword(row.dataset.topic); } });
   });
 }
 
-function updateCharts() {
-  const { year, keyword, search } = pubFilterState;
-  const searchLower = search.toLowerCase().trim();
-
-  // Recount based on currently visible publications
-  const filteredYearCounts = {};
-  const filteredTopicCounts = {};
-
-  pubChartData.pubs.forEach((pub, i) => {
-    const matchYear = year === 'all' || String(pub.year) === year;
-    const kws = pubChartData.pubKeywords[i];
-    const matchKeyword = keyword === 'all' || kws.includes(keyword);
-
-    // For text search filtering
-    const text = `${pub.title} ${pub.journal || ''}`.toLowerCase();
-    const matchSearch = !searchLower || text.includes(searchLower);
-
-    if (matchKeyword && matchSearch) {
-      if (pub.year) filteredYearCounts[pub.year] = (filteredYearCounts[pub.year] || 0) + 1;
-    }
-    if (matchYear && matchSearch) {
-      kws.forEach(kw => {
-        filteredTopicCounts[kw] = (filteredTopicCounts[kw] || 0) + 1;
-      });
-    }
+function parseOrcidWorks(groups) {
+  const pubs = groups.map(g => {
+    const s = g['work-summary'][0];
+    const extIds = s['external-ids']?.['external-id'] || [];
+    return {
+      title: s.title?.title?.value || 'Untitled',
+      journal: s['journal-title']?.value || '',
+      year: s['publication-date']?.year?.value || '',
+      month: s['publication-date']?.month?.value || '',
+      doi: extIds.find(e => e['external-id-type'] === 'doi')?.['external-id-value'] || null,
+      type: s.type || '',
+    };
   });
-
-  renderYearChart(filteredYearCounts, year);
-  renderTopicChart(filteredTopicCounts, keyword);
+  pubs.sort((a, b) => (b.year !== a.year ? b.year - a.year : (b.month || 0) - (a.month || 0)));
+  return pubs;
 }
 
 function renderPublications(pubs, citations) {
-  const pubList = document.getElementById('pubList');
-  const pubLoading = document.getElementById('pubLoading');
-  const filtersEl = document.getElementById('pubFilters');
-  const keywordsEl = document.getElementById('pubKeywords');
-
-  // Update stats
+  pubData = { pubs, keywords: pubs.map(extractKeywords) };
   statData.pubs = pubs.length;
-  document.getElementById('statPubs').textContent = pubs.length;
-  document.getElementById('pubCountBadge').querySelector('span').textContent = pubs.length;
+  animateNumber('statPubs', pubs.length);
+  document.querySelector('#pubCountBadge b').textContent = pubs.length;
 
-  // Detect pathogens
   const pathogens = detectPathogens(pubs);
   statData.pathogens = [...pathogens];
-  const pathEl = document.getElementById('statPathogens');
-  if (pathEl) animateNumber('statPathogens', pathogens.size);
-  if (pathEl) pathEl.title = [...pathogens].join(', ');
-
-  // Feed ticker
+  animateNumber('statPathogens', pathogens.size);
   tickerPathogens = [...pathogens];
   updateTicker();
 
-  // Extract keywords per publication
-  const allKeywords = new Map(); // label -> count
-  const pubKeywords = pubs.map(pub => {
-    const kws = extractKeywords(pub);
-    kws.forEach(k => allKeywords.set(k, (allKeywords.get(k) || 0) + 1));
-    return kws;
-  });
 
-  // Year filters
-  const years = [...new Set(pubs.map(p => p.year).filter(Boolean))].sort((a, b) => b - a);
-  if (filtersEl && years.length > 1) {
-    filtersEl.innerHTML = `
-      <button class="pub-filter-btn active" data-year="all">All</button>
-      ${years.map(y => `<button class="pub-filter-btn" data-year="${y}">${y}</button>`).join('')}
-    `;
-    filtersEl.style.display = 'flex';
-  }
-
-  // Keyword filters (sorted by frequency)
-  if (keywordsEl && allKeywords.size > 0) {
-    const sorted = [...allKeywords.entries()].sort((a, b) => b[1] - a[1]);
-    const kwIcon = (label) => {
-      const kp = KEYWORD_PATTERNS.find(p => p.label === label);
-      return kp ? kp.icon : 'fa-tag';
-    };
-    keywordsEl.innerHTML = `
-      <button class="pub-keyword-btn active" data-keyword="all"><i class="fas fa-tags"></i> All topics</button>
-      ${sorted.map(([label, count]) => `<button class="pub-keyword-btn" data-keyword="${label}"><i class="fas ${kwIcon(label)}"></i> ${label} <span style="opacity:0.5">${count}</span></button>`).join('')}
-    `;
-    keywordsEl.style.display = 'flex';
-  }
-
-  // Re-init filters with new buttons
-  initPubFilters();
-
-  // Build interactive charts
-  buildCharts(pubs, pubKeywords);
-
-  pubList.innerHTML = pubs.map((pub, i) => {
-    const citCount = citations && pub.doi && citations[pub.doi] !== undefined
-      ? citations[pub.doi] : null;
+  document.getElementById('pubList').innerHTML = pubs.map((pub, i) => {
+    const role = pubRole(pub.doi);
+    const isPreprint = pub.type === 'preprint';
+    const venue = pub.journal || (isPreprint ? preprintServer(pub.doi) : '');
+    const cit = citations && pub.doi && citations[pub.doi] !== undefined ? citations[pub.doi] : null;
     const citHTML = pub.doi
-      ? (citCount !== null
-        ? `<span class="citation-badge" data-doi="${pub.doi}"><i class="fas fa-quote-right"></i> ${citCount}</span>`
-        : `<span class="citation-badge loading" data-doi="${pub.doi}"><i class="fas fa-spinner fa-spin"></i></span>`)
+      ? `<span class="citation-badge" data-doi="${escapeHtml(pub.doi)}" title="Citations (Semantic Scholar)"><i class="fas fa-quote-right" aria-hidden="true"></i> ${cit !== null ? cit : '...'}</span>`
       : '';
-
-    const kws = pubKeywords[i];
-
+    const badges = [
+      role ? `<span class="role-badge">${role}</span>` : '',
+      isPreprint ? '<span class="preprint-badge">preprint</span>' : '',
+    ].join('');
     return `
-      <article class="pub-item" data-year="${pub.year || ''}" data-keywords="${kws.join(',')}" style="animation-delay: ${i * 0.04}s">
+      <li class="pub-item ${pathogenOf(pub)}${role ? ' pub-item--led' : ''}" data-idx="${i}" id="pub-${i}">
         <span class="pub-year">${pub.year || '?'}</span>
         <div class="pub-content">
+          ${badges ? `<div class="pub-badges">${badges}</div>` : ''}
           <h3>${pub.title}</h3>
-          ${pub.journal ? `<p class="pub-journal"><em>${pub.journal}</em></p>` : ''}
+          ${venue ? `<p class="pub-journal">${venue}</p>` : ''}
           <div class="pub-meta">
-            ${pub.doi ? `<a href="https://doi.org/${pub.doi}" target="_blank" class="btn-pub"><i class="fas fa-external-link-alt"></i> DOI</a>` : ''}
+            ${pub.doi ? `<a href="https://doi.org/${pub.doi}" target="_blank" rel="noopener" class="btn-doi"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> DOI</a>` : ''}
             ${citHTML}
           </div>
         </div>
-      </article>`;
+      </li>`;
   }).join('');
 
-  pubLoading.style.display = 'none';
-  const pubLayout = document.getElementById('pubLayout');
-  if (pubLayout) pubLayout.style.display = '';
+  document.getElementById('pubLoading').hidden = true;
+  document.getElementById('pubLayout').hidden = false;
+  renderPapersTrack();
+  applyPubFilters();
+  if (citations) setCitationTotal(Object.values(citations).reduce((s, c) => s + (c || 0), 0));
+  rescrollToHash();
+}
 
-  if (citations) {
-    const total = Object.values(citations).reduce((s, c) => s + (c || 0), 0);
-    statData.citations = total;
-    animateNumber('statCitations', total);
-    document.getElementById('citCountBadge').querySelector('span').textContent = total;
-  }
+function setCitationTotal(total) {
+  statData.citations = total;
+  animateNumber('statCitations', total);
+  document.querySelector('#citCountBadge b').textContent = total.toLocaleString('en-US');
 }
 
 async function fetchPublications() {
-  const pubLoading = document.getElementById('pubLoading');
   const cachedCitations = cacheGet('s2_citations');
-
   try {
-    const res = await fetch(ORCID_API, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(ORCID_API, { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`ORCID answered ${res.status}`);
     const data = await res.json();
     const pubs = parseOrcidWorks(data.group || []);
-
     renderPublications(pubs, cachedCitations);
-
     if (!cachedCitations) {
       fetchAllCitations(pubs.filter(p => p.doi));
     } else {
-      showCacheInfo('pubCacheInfo', ['s2_citations'], () => {
-        cacheInvalidate('s2_citations');
-        fetchAllCitations(pubs.filter(p => p.doi));
-      });
+      showCacheInfo('pubCacheInfo', ['s2_citations'], () => fetchAllCitations(pubs.filter(p => p.doi)));
     }
   } catch (err) {
     console.error('ORCID fetch error:', err);
-    pubLoading.innerHTML = `<p style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Could not load publications.<br><a href="https://orcid.org/${ORCID_ID}" target="_blank">View on ORCID directly</a></p>`;
+    pubLoadFailed = true;
+    document.getElementById('pubLoading').innerHTML = `<p>ORCID did not answer, so the list could not load. <a href="https://orcid.org/${SITE.orcid}" target="_blank" rel="noopener">See it on ORCID</a>, or check the papers I led above.</p>`;
   }
 }
 
 async function fetchAllCitations(pubs) {
-  const cached = cacheGet('s2_citations');
-  if (cached) {
-    let total = 0;
-    for (const pub of pubs) {
-      const count = cached[pub.doi] ?? null;
-      if (count !== null) total += count;
-      const badge = document.querySelector(`.citation-badge[data-doi="${pub.doi}"]`);
-      if (badge) { badge.classList.remove('loading'); badge.innerHTML = `<i class="fas fa-quote-right"></i> ${count ?? '--'}`; }
-    }
-    statData.citations = total;
-    animateNumber('statCitations', total);
-    document.getElementById('citCountBadge').querySelector('span').textContent = total;
-    return;
-  }
-
   const citations = {};
-  let totalCitations = 0;
-  const delay = (ms) => new Promise(r => setTimeout(r, ms));
-
+  let total = 0;
   for (const pub of pubs) {
+    const badge = document.querySelector(`.citation-badge[data-doi="${CSS.escape(pub.doi)}"]`);
     try {
-      await delay(150);
+      await new Promise(r => setTimeout(r, 150));
       const res = await fetch(`${S2_API}${pub.doi}?fields=citationCount`);
-      if (!res.ok) { citations[pub.doi] = 0; continue; }
-      const data = await res.json();
-      const count = data.citationCount || 0;
+      const count = res.ok ? ((await res.json()).citationCount || 0) : 0;
       citations[pub.doi] = count;
-      totalCitations += count;
-      const badge = document.querySelector(`.citation-badge[data-doi="${pub.doi}"]`);
-      if (badge) { badge.classList.remove('loading'); badge.innerHTML = `<i class="fas fa-quote-right"></i> ${count}`; }
+      total += count;
+      if (badge) badge.innerHTML = `<i class="fas fa-quote-right" aria-hidden="true"></i> ${count}`;
     } catch {
       citations[pub.doi] = 0;
-      const badge = document.querySelector(`.citation-badge[data-doi="${pub.doi}"]`);
-      if (badge) { badge.classList.remove('loading'); badge.innerHTML = `<i class="fas fa-quote-right"></i> --`; }
+      if (badge) badge.innerHTML = '<i class="fas fa-quote-right" aria-hidden="true"></i> --';
     }
   }
-
   cacheSet('s2_citations', citations);
-  statData.citations = totalCitations;
-  animateNumber('statCitations', totalCitations);
-  document.getElementById('citCountBadge').querySelector('span').textContent = totalCitations;
-  showCacheInfo('pubCacheInfo', ['s2_citations'], () => {
-    cacheInvalidate('s2_citations');
-    const el = document.getElementById('pubCacheInfo');
-    if (el) el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing citations...';
-    fetchAllCitations(pubs);
-  });
+  setCitationTotal(total);
+  showCacheInfo('pubCacheInfo', ['s2_citations'], () => fetchAllCitations(pubs));
 }
 
-function animateNumber(elementId, target) {
-  const el = document.getElementById(elementId);
-  if (!el) return;
-  const duration = 1500;
-  const start = performance.now();
-  function update(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const eased = 1 - Math.pow(1 - t, 4);
-    el.textContent = Math.round(target * eased);
-    if (t < 1) requestAnimationFrame(update);
-  }
-  requestAnimationFrame(update);
-}
-
-// ==================== DYNAMIC TICKER ====================
+// ==================== TICKER (washi tape) ====================
 let tickerPathogens = [];
 let tickerLangs = [];
-let tickerState = { x: 0, speed: 0.25, dragging: false, startX: 0, startScroll: 0, velocity: 0, lastX: 0, lastTime: 0, halfWidth: 0, raf: null };
+let tickerState = { x: 0, speed: 0.25, dragging: false, startX: 0, startScroll: 0, velocity: 0, lastX: 0, lastTime: 0, halfWidth: 0, raf: null, bound: false };
 
 function updateTicker() {
   const track = document.getElementById('tickerTrack');
   if (!track) return;
-
-  const items = [];
-  tickerPathogens.forEach(name => {
-    items.push({ label: name, icon: 'fas ' + (PATHOGEN_ICONS[name] || 'fa-disease'), tab: 'publications' });
-  });
-  tickerLangs.forEach(name => {
-    items.push({ label: name, icon: 'fas fa-code', tab: 'projects' });
-  });
-
-  if (items.length === 0) return;
-
-  function buildSet() {
-    return items.map(item =>
-      `<a class="ticker-item" href="#${item.tab}" data-tab="${item.tab}"><i class="${item.icon}"></i> ${item.label}</a><span class="ticker-sep"></span>`
-    ).join('');
-  }
-
-  const repeats = Math.max(4, Math.ceil(20 / items.length));
+  const items = [
+    ...tickerPathogens.map(name => ({ label: name, icon: 'fas ' + (PATHOGEN_ICONS[name] || 'fa-disease'), href: '#publications' })),
+    ...tickerLangs.map(name => ({ label: name, icon: 'fas fa-code', href: '#tools' })),
+  ];
+  if (!items.length) return;
+  const set = items.map(it => `<a class="ticker-item" href="${it.href}" tabindex="-1"><i class="${it.icon}" aria-hidden="true"></i> ${it.label}</a><span class="ticker-sep"></span>`).join('');
   let html = '';
-  for (let i = 0; i < repeats; i++) html += buildSet();
+  for (let i = 0; i < Math.max(4, Math.ceil(20 / items.length)); i++) html += set;
   track.innerHTML = html + html;
-
-  // Click handler
-  track.querySelectorAll('.ticker-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if (tickerState.dragging) { e.preventDefault(); return; }
-      e.preventDefault();
-      const link = document.querySelector(`.nav-link[data-tab="${el.dataset.tab}"]`);
-      if (link) link.click();
-    });
-  });
-
-  // Measure half-width for seamless looping
   requestAnimationFrame(() => {
     tickerState.halfWidth = track.scrollWidth / 2;
     if (!tickerState.raf) tickerAnimate();
   });
-
-  initTickerDrag(track);
+  if (!tickerState.bound) { initTickerDrag(track); tickerState.bound = true; }
 }
 
 function tickerAnimate() {
   const track = document.getElementById('tickerTrack');
   if (!track || tickerState.halfWidth === 0) return;
-
-  if (!tickerState.dragging) {
-    // Apply momentum decay
-    if (Math.abs(tickerState.velocity) > 0.1) {
-      tickerState.x -= tickerState.velocity;
-      tickerState.velocity *= 0.95;
-    } else {
-      tickerState.velocity = 0;
-      tickerState.x -= tickerState.speed;
-    }
+  const s = tickerState;
+  if (!s.dragging) {
+    if (Math.abs(s.velocity) > 0.1) { s.x -= s.velocity; s.velocity *= 0.95; }
+    else { s.velocity = 0; s.x -= s.speed; }
   }
-
-  // Seamless loop
-  if (tickerState.x <= -tickerState.halfWidth) tickerState.x += tickerState.halfWidth;
-  if (tickerState.x > 0) tickerState.x -= tickerState.halfWidth;
-
-  track.style.transform = `translateX(${tickerState.x}px)`;
-  tickerState.raf = requestAnimationFrame(tickerAnimate);
+  if (s.x <= -s.halfWidth) s.x += s.halfWidth;
+  if (s.x > 0) s.x -= s.halfWidth;
+  track.style.transform = `translateX(${s.x}px)`;
+  s.raf = requestAnimationFrame(tickerAnimate);
 }
 
 function initTickerDrag(track) {
   const s = tickerState;
-
-  function pointerDown(clientX) {
-    s.dragging = true;
-    s.startX = clientX;
-    s.startScroll = s.x;
-    s.velocity = 0;
-    s.lastX = clientX;
-    s.lastTime = performance.now();
-    track.classList.add('dragging');
-  }
-
-  function pointerMove(clientX) {
+  let moved = false;
+  const down = (x) => { s.dragging = true; moved = false; s.startX = s.lastX = x; s.startScroll = s.x; s.velocity = 0; s.lastTime = performance.now(); track.classList.add('dragging'); };
+  const move = (x) => {
     if (!s.dragging) return;
-    const dx = clientX - s.startX;
-    s.x = s.startScroll + dx;
-
-    const now = performance.now();
-    const dt = now - s.lastTime;
-    if (dt > 0) {
-      s.velocity = -(clientX - s.lastX) / dt * 16;
-    }
-    s.lastX = clientX;
-    s.lastTime = now;
-  }
-
-  function pointerUp() {
-    if (!s.dragging) return;
-    s.dragging = false;
-    track.classList.remove('dragging');
-  }
-
-  // Mouse
-  track.addEventListener('mousedown', (e) => { e.preventDefault(); pointerDown(e.clientX); });
-  document.addEventListener('mousemove', (e) => pointerMove(e.clientX));
-  document.addEventListener('mouseup', pointerUp);
-
-  // Touch
-  track.addEventListener('touchstart', (e) => pointerDown(e.touches[0].clientX), { passive: true });
-  document.addEventListener('touchmove', (e) => { if (s.dragging) pointerMove(e.touches[0].clientX); }, { passive: true });
-  document.addEventListener('touchend', pointerUp);
-}
-
-// ==================== BLOG POSTS ====================
-const BLOG_POSTS = [
-  {
-    date: '2026-03-24',
-    category: 'Preprint',
-    title: 'Pathotypr preprint is out on bioRxiv!',
-    body: 'Our preprint <em>&ldquo;Pathotypr: harmonised MTBC lineage assignment and resistance-associated variant detection for genomic surveillance&rdquo;</em> is now available on bioRxiv. Pathotypr is an alignment-free tool that supports all 14 currently recognised MTBC lineages and WHO catalogue-based resistance calling, processing ~1 sample/second. Validated on 88,071 samples with 100% lineage concordance and high resistance prediction performance.',
-    links: [
-      { url: 'https://www.biorxiv.org/content/10.64898/2026.03.24.714002v1', label: 'Read on bioRxiv', icon: 'fas fa-file-alt' },
-      { url: 'https://github.com/PathoGenOmics-Lab/pathotypr', label: 'Source code', icon: 'fab fa-github' },
-    ],
-  },
-  {
-    date: '2026-03-14',
-    category: 'Update',
-    title: 'Welcome to my new portfolio',
-    body: "I've redesigned my personal website with a fresh, clean look. Here you'll find my publications, projects, and interactive experiments. Stay tuned for updates on my research and bioinformatics adventures.",
-  },
-];
-
-function renderBlogPosts() {
-  const container = document.getElementById('blogList');
-  if (!container) return;
-
-  container.innerHTML = BLOG_POSTS.map(post => {
-    const d = new Date(post.date + 'T00:00:00');
-    const day = d.getDate();
-    const monthYear = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    const linksHTML = (post.links || []).map(l =>
-      `<a href="${l.url}" target="_blank" class="btn-pub"><i class="${l.icon}"></i> ${l.label}</a>`
-    ).join('');
-
-    return `
-      <article class="blog-post anim">
-        <div class="blog-date">
-          <span class="blog-day">${day}</span>
-          <span class="blog-month">${monthYear}</span>
-        </div>
-        <div class="blog-content">
-          <span class="blog-category">${post.category}</span>
-          <h3>${post.title}</h3>
-          <p>${post.body}</p>
-          ${linksHTML ? `<div class="blog-links">${linksHTML}</div>` : ''}
-        </div>
-      </article>`;
-  }).join('');
+    if (Math.abs(x - s.startX) > 3) moved = true;
+    s.x = s.startScroll + (x - s.startX);
+    const now = performance.now(), dt = now - s.lastTime;
+    if (dt > 0) s.velocity = -(x - s.lastX) / dt * 16;
+    s.lastX = x; s.lastTime = now;
+  };
+  const up = () => { if (!s.dragging) return; s.dragging = false; track.classList.remove('dragging'); };
+  track.addEventListener('mousedown', e => { e.preventDefault(); down(e.clientX); });
+  document.addEventListener('mousemove', e => move(e.clientX));
+  document.addEventListener('mouseup', up);
+  track.addEventListener('touchstart', e => down(e.touches[0].clientX), { passive: true });
+  document.addEventListener('touchmove', e => { if (s.dragging) move(e.touches[0].clientX); }, { passive: true });
+  document.addEventListener('touchend', up);
+  // a drag must not also follow the link under the pointer
+  track.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 
 // ==================== GITHUB REPOS ====================
-const GH_USER = 'Paururo';
-const GH_LAB = 'PathoGenOmics-Lab';
-const GH_LAB_API = `https://api.github.com/orgs/${GH_LAB}/repos?sort=updated&per_page=100`;
-const GH_USER_API = `https://api.github.com/users/${GH_USER}/repos?sort=updated&per_page=100`;
-// Personal repos to exclude
+const GH_LAB_API = `https://api.github.com/orgs/${SITE.githubLab}/repos?sort=updated&per_page=100`;
+const GH_USER_API = `https://api.github.com/users/${SITE.githubUser}/repos?sort=updated&per_page=100`;
 const GH_EXCLUDE = ['paururo.github.io'];
 const GH_CACHE_KEY = 'gh_paururo_repos_v2';
-
-const LANG_COLORS = {
-  Python: '#3572A5', R: '#198CE7', HTML: '#E34C26',
-  JavaScript: '#F1E05A', Shell: '#89E051', Jupyter: '#DA5B0B',
-  Nextflow: '#3AC486', Perl: '#0298c3', CSS: '#563d7c',
-  Dockerfile: '#384d54', Makefile: '#427819', TypeScript: '#3178c6',
-  Rust: '#DEA584',
-};
-
 let ghAllRepos = [];
 let ghFilterLang = 'all';
 
 function renderGitHubRepos(repos) {
-  const grid = document.getElementById('ghGrid');
-  const loading = document.getElementById('ghLoading');
-  const filtersEl = document.getElementById('ghFilters');
-  const chartsEl = document.getElementById('ghCharts');
-
-  // Store all repos for filtering
   ghAllRepos = repos;
-
-  // Count unique languages
   const langs = new Set(repos.map(r => r.language).filter(Boolean));
   statData.langs = [...langs];
-  const langEl = document.getElementById('statLangs');
-  if (langEl) animateNumber('statLangs', langs.size);
-  if (langEl) langEl.title = [...langs].join(', ');
-
-  // Feed ticker
+  animateNumber('statLangs', langs.size);
   tickerLangs = [...langs];
   updateTicker();
 
-  // Build language filter chips
   const langCounts = {};
-  repos.forEach(r => {
-    const l = r.language || 'Other';
-    langCounts[l] = (langCounts[l] || 0) + 1;
-  });
-  const sortedLangs = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
-
-  if (filtersEl && sortedLangs.length > 1) {
-    filtersEl.innerHTML = `
-      <button class="gh-filter-btn active" data-lang="all"><i class="fas fa-layer-group"></i> All <span class="gh-filter-count">${repos.length}</span></button>
-      ${sortedLangs.map(([lang, count]) => {
-        const color = LANG_COLORS[lang] || '#8b8b8b';
-        return `<button class="gh-filter-btn" data-lang="${lang}"><span class="gh-filter-dot" style="background:${color}"></span> ${lang} <span class="gh-filter-count">${count}</span></button>`;
-      }).join('')}
-    `;
-    filtersEl.style.display = 'flex';
-
-    filtersEl.querySelectorAll('.gh-filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filtersEl.querySelectorAll('.gh-filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        ghFilterLang = btn.dataset.lang;
-        applyGhFilter();
-      });
-    });
+  repos.forEach(r => { const l = r.language || 'Other'; langCounts[l] = (langCounts[l] || 0) + 1; });
+  const sorted = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
+  const filters = document.getElementById('ghFilters');
+  if (sorted.length > 1) {
+    filters.innerHTML = `<button type="button" class="gh-filter-btn active" data-lang="all">all <span class="gh-filter-count">${repos.length}</span></button>` +
+      sorted.map(([lang, n]) => `<button type="button" class="gh-filter-btn" data-lang="${lang}"><span class="gh-filter-dot" style="background:${LANG_COLORS[lang] || '#8b8b8b'}"></span> ${lang} <span class="gh-filter-count">${n}</span></button>`).join('');
+    filters.hidden = false;
+    filters.onclick = (e) => {
+      const b = e.target.closest('.gh-filter-btn');
+      if (!b) return;
+      ghFilterLang = b.dataset.lang;
+      applyGhFilter();
+    };
   }
-
-  // Build tech chart
   renderTechChart(langCounts);
-
-  // Render cards and show layout
   renderGhCards(repos);
-  loading.style.display = 'none';
-  const ghLayout = document.getElementById('ghLayout');
-  if (ghLayout) ghLayout.style.display = '';
+  document.getElementById('ghLoading').hidden = true;
+  document.getElementById('ghLayout').hidden = false;
+  rescrollToHash();
 }
 
 function renderTechChart(langCounts) {
   const container = document.getElementById('chartTechBars');
   if (!container) return;
-
   const sorted = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
   const max = Math.max(...sorted.map(e => e[1]), 1);
-
-  container.innerHTML = sorted.map(([lang, count], i) => {
-    const color = LANG_COLORS[lang] || '#8b8b8b';
-    const pct = (count / max) * 100;
-    const isActive = ghFilterLang === lang;
-    const isDimmed = ghFilterLang !== 'all' && ghFilterLang !== lang;
-    return `
-      <div class="chart-bar-row${isActive ? ' active' : ''}" data-chart-lang="${lang}">
-        <span class="chart-bar-icon"><span class="gh-lang-dot" style="background:${color};width:8px;height:8px;border-radius:50%;display:inline-block"></span></span>
-        <span class="chart-bar-label">${lang}</span>
-        <div class="chart-bar-track">
-          <div class="chart-bar-fill${isDimmed ? ' dimmed' : ''}" style="width:${pct}%;background:linear-gradient(90deg, ${color}, ${color}88)"></div>
-        </div>
-        <span class="chart-bar-count">${count}</span>
-      </div>`;
-  }).join('');
-
-  // Click chart bars to filter
-  container.querySelectorAll('.chart-bar-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const lang = row.dataset.chartLang;
-      ghFilterLang = ghFilterLang === lang ? 'all' : lang;
-      const filtersEl = document.getElementById('ghFilters');
-      if (filtersEl) {
-        filtersEl.querySelectorAll('.gh-filter-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.lang === ghFilterLang);
-        });
-      }
-      applyGhFilter();
-    });
+  container.innerHTML = sorted.map(([lang, count]) => `
+    <div class="bar-row${ghFilterLang === lang ? ' active' : ''}" role="button" tabindex="0" data-lang="${lang}" aria-pressed="${ghFilterLang === lang}" aria-label="${lang}, ${count} repositories">
+      <span class="bar-icon"><span class="lang-dot" style="display:inline-block;background:${LANG_COLORS[lang] || '#8b8b8b'}"></span></span>
+      <span class="bar-label">${lang}</span>
+      <span class="bar-track"><span class="bar-fill${ghFilterLang !== 'all' && ghFilterLang !== lang ? ' dimmed' : ''}" style="display:block;width:${(count / max) * 100}%;--bc:${LANG_COLORS[lang] || '#8b8b8b'}"></span></span>
+      <span class="bar-count">${count}</span></div>`).join('');
+  container.querySelectorAll('.bar-row').forEach(row => {
+    const pick = () => { ghFilterLang = ghFilterLang === row.dataset.lang ? 'all' : row.dataset.lang; applyGhFilter(); };
+    row.addEventListener('click', pick);
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
   });
 }
 
+// GitHub shortcodes such as :shipit: only render on GitHub itself
+const cleanDescription = (s) => String(s || '').replace(/(^|\s):[a-z0-9_+-]+:(?=\s|$)/g, '$1').replace(/\s{2,}/g, ' ').trim();
+
 function renderGhCards(repos) {
-  const grid = document.getElementById('ghGrid');
-  grid.innerHTML = repos.map((repo, i) => {
+  document.getElementById('ghGrid').innerHTML = repos.map(repo => {
     const lang = repo.language || 'Other';
-    const langColor = LANG_COLORS[lang] || '#8b8b8b';
-    const desc = repo.description || 'No description';
-    const updated = new Date(repo.updated_at).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric'
-    });
+    const desc = cleanDescription(repo.description);
+    const updated = new Date(repo.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
     return `
-      <a href="${repo.html_url}" target="_blank" class="gh-card gh-card--lab" data-lang="${lang}" style="animation-delay: ${i * 0.05}s">
-        <div class="gh-card-header">
-          <i class="fab fa-github"></i>
-          <span class="gh-repo-name">${repo.name}</span>
-          ${repo.owner.login.toLowerCase() === GH_LAB.toLowerCase() ? `<span class="gh-org-badge"><i class="fas fa-flask"></i> ${GH_LAB}</span>` : ''}
-        </div>
-        <p class="gh-desc">${desc}</p>
-        <div class="gh-card-footer">
-          <span class="gh-lang"><span class="gh-lang-dot" style="background:${langColor}"></span>${lang}</span>
-          <span class="gh-meta"><i class="fas fa-star"></i> ${repo.stargazers_count}</span>
-          <span class="gh-meta"><i class="fas fa-code-branch"></i> ${repo.forks_count}</span>
+      <a href="${repo.html_url}" target="_blank" rel="noopener" class="gh-card" data-lang="${lang}">
+        <span class="gh-card-header"><i class="fab fa-github" aria-hidden="true"></i><span class="gh-repo-name">${escapeHtml(repo.name)}</span></span>
+        <span class="gh-desc">${desc ? escapeHtml(desc) : 'No description yet.'}</span>
+        <span class="gh-card-footer">
+          <span><span class="lang-dot" style="display:inline-block;background:${LANG_COLORS[lang] || '#8b8b8b'}"></span> ${lang}</span>
+          <span><i class="fas fa-star" aria-hidden="true"></i> ${repo.stargazers_count}</span>
+          <span><i class="fas fa-code-branch" aria-hidden="true"></i> ${repo.forks_count}</span>
           <span class="gh-updated">${updated}</span>
-        </div>
+        </span>
       </a>`;
   }).join('');
 }
 
 function applyGhFilter() {
-  const filtered = ghFilterLang === 'all'
-    ? ghAllRepos
-    : ghAllRepos.filter(r => (r.language || 'Other') === ghFilterLang);
-
-  renderGhCards(filtered);
-
-  // Update chart highlighting
-  const langCounts = {};
-  const countSource = ghFilterLang === 'all' ? ghAllRepos : filtered;
-  ghAllRepos.forEach(r => {
-    const l = r.language || 'Other';
-    langCounts[l] = (langCounts[l] || 0) + 1;
-  });
-  renderTechChart(langCounts);
+  renderGhCards(ghFilterLang === 'all' ? ghAllRepos : ghAllRepos.filter(r => (r.language || 'Other') === ghFilterLang));
+  document.querySelectorAll('.gh-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === ghFilterLang));
+  const counts = {};
+  ghAllRepos.forEach(r => { const l = r.language || 'Other'; counts[l] = (counts[l] || 0) + 1; });
+  renderTechChart(counts);
 }
 
 async function fetchGitHubRepos() {
   const loading = document.getElementById('ghLoading');
-
-  // Clear legacy cache keys
-  localStorage.removeItem('gh_repos');
-  localStorage.removeItem('gh_lab_repos');
-  localStorage.removeItem('gh_paururo_repos');
-
+  cacheInvalidate('gh_repos', 'gh_lab_repos', 'gh_paururo_repos');
+  const refresh = () => {
+    cacheInvalidate(GH_CACHE_KEY);
+    loading.hidden = false;
+    document.getElementById('ghLayout').hidden = true;
+    fetchGitHubRepos();
+  };
   const cached = cacheGet(GH_CACHE_KEY);
   if (cached) {
     renderGitHubRepos(cached);
-    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], () => {
-      cacheInvalidate(GH_CACHE_KEY);
-      loading.style.display = '';
-      document.getElementById('ghLayout').style.display = 'none';
-      fetchGitHubRepos();
-    });
+    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], refresh);
     return;
   }
 
   try {
     const excludeSet = new Set(GH_EXCLUDE.map(n => n.toLowerCase()));
-    const userLower = GH_USER.toLowerCase();
+    const userLower = SITE.githubUser.toLowerCase();
     let labRepos = [];
     let userRepos = [];
+    let rateLimited = false;
 
-    // 1. Fetch ALL lab org repos
+    // 1. Every public repository in the lab organisation
     try {
       const res = await fetch(GH_LAB_API);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) labRepos = data.filter(r => !r.fork && !r.archived);
+      } else {
+        rateLimited = true;
       }
-    } catch { /* fall through */ }
+    } catch { rateLimited = true; }
 
-    // 2. Check contributors for each lab repo to find ones @paururo contributed to.
-    //    Batch requests with small delays to stay within GitHub rate limits.
-    const myLabRepos = [];
-    for (const repo of labRepos) {
-      try {
-        const res = await fetch(`https://api.github.com/repos/${GH_LAB}/${repo.name}/contributors?per_page=30`);
-        if (res.ok) {
-          const contribs = await res.json();
-          if (Array.isArray(contribs) && contribs.some(c => c.login.toLowerCase() === userLower)) {
-            myLabRepos.push(repo);
+    // 2. Keep the ones I contributed to. A few requests at a time instead of
+    //    one after another: the same number of calls, but the grid appears in
+    //    a couple of seconds. If GitHub's anonymous limit (60 calls an hour)
+    //    cuts the checks short, fall back to the featured tools and do not
+    //    cache the result, so a partial list is not kept for a whole day.
+    const featuredNames = new Set(FEATURED_TOOLS.map(t => t.name.toLowerCase()));
+    const mine = new Array(labRepos.length).fill(false);
+    let next = 0;
+    async function worker() {
+      while (next < labRepos.length && !rateLimited) {
+        const i = next++;
+        try {
+          const res = await fetch(`https://api.github.com/repos/${SITE.githubLab}/${labRepos[i].name}/contributors?per_page=30`);
+          if (res.status === 403 || res.status === 429) { rateLimited = true; break; }
+          if (res.ok) {
+            const contribs = await res.json();
+            mine[i] = Array.isArray(contribs) && contribs.some(c => c.login.toLowerCase() === userLower);
           }
-        }
-        // Small delay between contributor checks to avoid hitting rate limits
-        await new Promise(r => setTimeout(r, 120));
-      } catch { /* skip repo */ }
+        } catch { /* skip this repository */ }
+      }
     }
+    await Promise.all(Array.from({ length: 6 }, worker));
+    const myLabRepos = labRepos.filter((repo, i) => mine[i] || (rateLimited && featuredNames.has(repo.name.toLowerCase())));
 
-    // 3. Fetch personal repos
+    // 3. My personal repositories
     try {
       const res = await fetch(GH_USER_API);
       if (res.ok) {
@@ -2017,27 +993,21 @@ async function fetchGitHubRepos() {
       }
     } catch { /* ignore */ }
 
-    // 4. Merge and deduplicate
     const seen = new Set();
     const repos = [];
     for (const r of [...myLabRepos, ...userRepos]) {
       const key = r.full_name.toLowerCase();
       if (!seen.has(key)) { seen.add(key); repos.push(r); }
     }
-
     if (repos.length === 0) throw new Error('No repos loaded');
 
     const sorted = repos.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-    cacheSet(GH_CACHE_KEY, sorted);
+    if (!rateLimited) cacheSet(GH_CACHE_KEY, sorted);
     renderGitHubRepos(sorted);
-    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], () => {
-      cacheInvalidate(GH_CACHE_KEY);
-      loading.style.display = '';
-      document.getElementById('ghLayout').style.display = 'none';
-      fetchGitHubRepos();
-    });
+    showCacheInfo('ghCacheInfo', [GH_CACHE_KEY], refresh);
   } catch (err) {
     console.error('GitHub fetch error:', err);
-    loading.innerHTML = `<p style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Could not load repositories.<br><a href="https://github.com/${GH_USER}" target="_blank">View on GitHub directly</a></p>`;
+    ghLoadFailed = true;
+    loading.innerHTML = `<p>GitHub did not answer (its anonymous API allows 60 requests an hour). The featured tools above are always here. <a href="https://github.com/${SITE.githubLab}" target="_blank" rel="noopener">Browse PathoGenOmics-Lab on GitHub</a></p>`;
   }
 }
