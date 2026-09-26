@@ -1444,7 +1444,10 @@ function renderTopicTree() {
   if (!holder._fitBound) {
     holder._fitBound = true;
     if (document.fonts) document.fonts.ready.then(() => holder._fit());
-    if (window.matchMedia) window.matchMedia('(max-width: 640px)').addEventListener('change', () => holder._fit());
+    const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)');
+    // Safari before 14 only has addListener
+    if (narrow && narrow.addEventListener) narrow.addEventListener('change', () => holder._fit());
+    else if (narrow && narrow.addListener) narrow.addListener(() => holder._fit());
   }
 
   // grow in once, when first seen
