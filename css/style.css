@@ -891,6 +891,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .thing--mug { left: 36%; }
 .thing--printer { left: 61%; }
 .thing--jar { left: 80%; }
+/* half a coconut, where Polar hides; its size follows his scale (polar.js) */
+.thing--bowl { left: auto; right: calc(39% + 14px); width: 78px; height: 60px; }
+.bowl-sprite { display: block; width: 100%; height: 100%; background: url(../assets/img/coco-half.png?v=3edd5b6edd) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
 .thing--keyboard { left: 10%; bottom: 74px; z-index: 2; }
 .thing--keyboard .kb { display: block; width: calc(55 * var(--px)); height: calc(24 * var(--px)); }
 .kb .key { transition: transform 0.08s; transform-box: fill-box; }
@@ -995,6 +998,18 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .polar.shake .polar-sprite { animation: polarShake 0.5s steps(6); }
 @keyframes polarHop { 50% { translate: 0 -4px; } }
 @keyframes polarShake { 20% { translate: -2px 0; } 40% { translate: 2px 0; } 60% { translate: -2px 0; } 80% { translate: 2px 0; } }
+/* his coconut: his house, hanging under the top bar in the corner; sizes follow his scale (polar.js) */
+.coco {
+  position: fixed; z-index: 58; right: 20px; top: calc(env(safe-area-inset-top, 0px) + var(--header) - 4px);
+  width: 86px; height: 116px; padding: 0; border: 0; background: none; cursor: pointer;
+  pointer-events: none; -webkit-tap-highlight-color: transparent;
+}
+.coco-swing { position: absolute; inset: 0; transform-origin: 43.5px 0; will-change: transform; }
+.coco-sprite { position: absolute; inset: 0; background: url(../assets/img/coco.png?v=a901367d7c) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
+/* only the shell takes a knock, not the rope */
+.coco-hit { position: absolute; left: 4%; top: 23%; width: 92%; height: 73%; border-radius: 50%; pointer-events: auto; }
+.coco:focus-visible { outline: none; }
+.coco:focus-visible .coco-hit { outline: 2.5px dashed var(--terra-ink); outline-offset: 2px; }
 .polar-fx { position: fixed; z-index: 61; pointer-events: none; transform: translate(-50%, -100%); }
 .polar-fx svg { display: block; }
 .polar-fx--heart { animation: fxRise 1.4s ease-out forwards; }
@@ -1014,6 +1029,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .pond-show .pond-veil { opacity: 1; visibility: visible; }
 .pond-show #bioCanvas { z-index: 95; }
 .pond-show .polar { z-index: 96; }
+.pond-show .coco { z-index: 95; }
 .pond-caption { font-family: var(--font-hand); font-weight: 700; font-size: 26px; line-height: 1.25; color: var(--ink); text-align: center; }
 .pond-caption::after { content: 'click anywhere to let them go'; display: block; margin-top: 4px; font-family: var(--font-pixel); font-weight: 400; font-size: 12.5px; color: var(--muted); }
 
@@ -1055,6 +1071,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root[data-theme="dark"] .thing-sprite svg, :root[data-theme="dark"] .printer-frame svg, :root[data-theme="dark"] .critter-sprite svg, :root[data-theme="dark"] .cup-sprite svg { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5)); }
 :root[data-theme="dark"] .screen { box-shadow: 0 0 18px rgba(134, 240, 156, 0.35); }
 :root[data-theme="dark"] .polar-sprite { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 8px rgba(255, 190, 90, 0.35)); }
+:root[data-theme="dark"] .coco-sprite { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 0 8px rgba(255, 190, 90, 0.3)); }
 :root[data-theme="dark"] .hero-visual::before { content: ''; position: absolute; left: 50%; top: 44%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; z-index: 0; pointer-events: none; background: radial-gradient(circle, rgba(255, 62, 165, 0.34), rgba(166, 108, 255, 0.14) 42%, transparent 66%); }
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) .topbar { border-bottom-color: rgba(255, 62, 165, 0.45); box-shadow: 0 1px 20px rgba(255, 62, 165, 0.2); }
@@ -1094,6 +1111,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root:not([data-theme="light"]) .thing-sprite svg, :root:not([data-theme="light"]) .printer-frame svg, :root:not([data-theme="light"]) .critter-sprite svg, :root:not([data-theme="light"]) .cup-sprite svg { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5)); }
 :root:not([data-theme="light"]) .screen { box-shadow: 0 0 18px rgba(134, 240, 156, 0.35); }
 :root:not([data-theme="light"]) .polar-sprite { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 8px rgba(255, 190, 90, 0.35)); }
+  :root:not([data-theme="light"]) .coco-sprite { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 0 8px rgba(255, 190, 90, 0.3)); }
 :root:not([data-theme="light"]) .hero-visual::before { content: ''; position: absolute; left: 50%; top: 44%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; z-index: 0; pointer-events: none; background: radial-gradient(circle, rgba(255, 62, 165, 0.34), rgba(166, 108, 255, 0.14) 42%, transparent 66%); }
 }
 
@@ -1169,6 +1187,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .envelope { width: 66px; bottom: 16px; }
   .print:nth-child(n) { transform: none; }
   .ruler-feature span { display: none; }
+  .coco { right: 8px; }
   .bench { --px: 2px; --mpx: 3px; height: 330px; }
   .bench-desk { height: 100px; }
   .thing { bottom: 113px; }
@@ -1177,8 +1196,10 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .thing--mug { left: auto; right: 104px; bottom: 58px; z-index: 2; }
   .thing--printer { left: auto; right: 26px; }
   .thing--jar { left: auto; right: 0; }
+  /* on a phone the desk is full: the half coconut sits on the shelf */
+  .thing--bowl { right: 12px; bottom: calc(100% - 56px); }
   .thing--keyboard { left: 56px; bottom: 50px; }
-  .bench-shelf { top: 26px; width: 34%; right: 0; }
+  .bench-shelf { top: 56px; width: 34%; right: 0; }
   .tape-ticker { display: none; }
   body { padding-bottom: 0; }
 }

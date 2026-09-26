@@ -5,8 +5,12 @@
 // in "Off the bench", or the genome ruler at the top when nothing else is in
 // sight. On the desk he walks about, as far as the things on it let him. Now
 // and then he flies up to the ruler to see the plush bacillus: they walk
-// together, dance, and he bends down to give it a kiss. A click on him is a
-// song and a kiss for you.
+// together, dance, and he bends down to give it a kiss. And he has a home: a
+// coconut hanging in the top right corner, that he flies into by its door, to
+// look out at you and sing; and on the desk half a coconut that he dives
+// into head first, till only the tips of his tail show. He seldom goes to
+// either by himself, and never for long: a knock on a coconut calls him to
+// it. A click on him is a song and a kiss for you.
 // He is pixel art redrawn from his character sheet, in
 // assets/img/polar.png: one 117 x 107 cell per pose, feet on one line.
 // ============================================================
@@ -65,16 +69,92 @@ function polarFxSVG(name, scale = 3) {
   return `<svg viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}</svg>`;
 }
 
+// His coconut, hanging under the top bar in the top right corner, drawn by
+// scripts/build-coco.py (assets/img/coco.png) at his own scale so that he
+// fits through its door: where its rope hangs from, and the door (centre and
+// radius), in art pixels
+const COCO_CELL = [86, 116];
+const COCO_PIVOT = [43.5, 0];
+const COCO_DOOR = [42, 66, 18.5];
+// Half a coconut on the desk (assets/img/coco-half.png, same script): the
+// centre of its cut edge and the half width and height of the edge inside;
+// the half width and height outside, and its bottom; and the point of his
+// chest that he turns about when he dives in
+const BOWL_CELL = [78, 60];
+const BOWL_RIM = [39, 12, 31, 8];
+const BOWL_EDGE = [35, 10, 53];
+const POLAR_PIVOT = [58.5, 66];
+
+// whole device pixels per art pixel, the same for him and for his coconuts
+function polarScale() {
+  const dpr = window.devicePixelRatio || 1;
+  return Math.max(1, Math.round((innerWidth < 640 ? 0.66 : 1) * dpr)) / dpr;
+}
+
+// The coconut sways a little on its rope in a breeze, and swings when he
+// goes in or out or when someone knocks on it
+function initCoconut() {
+  const el = document.getElementById('coco');
+  if (!el) return;
+  const swing = el.querySelector('.coco-swing');
+  let S = 1, angle = 0, spin = 0, last = 0, drawn = null;
+  function applyScale() {
+    S = polarScale();
+    el.style.width = `${COCO_CELL[0] * S}px`;
+    el.style.height = `${COCO_CELL[1] * S}px`;
+    swing.style.transformOrigin = `${COCO_PIVOT[0] * S}px ${COCO_PIVOT[1] * S}px`;
+  }
+  // where a point of the picture is in the window, as it swings
+  function at(ax, ay) {
+    const r = el.getBoundingClientRect();
+    const dx = (ax - COCO_PIVOT[0]) * S, dy = (ay - COCO_PIVOT[1]) * S;
+    const c = Math.cos(angle), s = Math.sin(angle);
+    return { x: r.left + COCO_PIVOT[0] * S + dx * c - dy * s, y: r.top + COCO_PIVOT[1] * S + dx * s + dy * c };
+  }
+  // a pendulum on a short rope
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    const dt = last ? Math.min((ts - last) / 16.667, 3) : 1;
+    last = ts;
+    if (document.hidden) return;
+    if (animSpeed > 0) {
+      const breeze = Math.sin(ts / 1700) * 0.008 + Math.sin(ts / 2900 + 1.3) * 0.005;
+      spin += (-(angle - breeze) * 0.0045 - spin * 0.03) * dt;
+      angle += spin * dt;
+    } else { angle = 0; spin = 0; }
+    if (drawn === null || Math.abs(angle - drawn) > 0.0003) {
+      swing.style.transform = `rotate(${angle.toFixed(4)}rad)`;
+      drawn = angle;
+    }
+  }
+  el.addEventListener('click', () => {
+    spin += (spin < 0 ? -1 : 1) * 0.009;
+    Bus.emit('coco:knock');
+  });
+  window.addEventListener('resize', applyScale);
+  applyScale();
+  el.coco = {
+    door: () => ({ ...at(COCO_DOOR[0], COCO_DOOR[1]), r: COCO_DOOR[2] * S }),
+    push: (v) => { if (animSpeed > 0) spin += v; },
+    get angle() { return angle; },
+  };
+  el.hidden = false;
+  requestAnimationFrame(frame);
+}
+
 function initPolar() {
   const el = document.getElementById('polar');
   if (!el) return;
   const sprite = el.querySelector('.polar-sprite');
+  const bowlEl = document.querySelector('.thing--bowl');
   let S = 1;                                     // CSS pixels per art pixel
   const st = {
     x: -300, y: -300, vx: 0, vy: 0, mode: 'fly', perch: null, facing: 1, k: 1,
     frame: '', flap: 0, t: 0, queue: [], step: null, stepStart: 0, stepUntil: 0, leaveAt: 0, lastClick: 0,
     follow: 0, zoom: 0, seedAt: performance.now() + 25000, hold: false, lift: 0, onLeave: null,
     visitAt: performance.now() + 20000 + Math.random() * 12000, walkT: 0, deskSeen: false,
+    homeAt: performance.now() + 240000 + Math.random() * 120000, homeUntil: 0, nest: null, clip: null, leaving: false, pending: null,
+    bw: null, rot: 0, bowlUntil: 0, bowlSide: -1,
   };
   const pointer = { x: -1, y: -1 };
   const now = () => performance.now();
@@ -86,13 +166,17 @@ function initPolar() {
   };
   // whole device pixels per art pixel, so every pixel of him stays crisp
   function applyScale() {
-    const dpr = window.devicePixelRatio || 1;
-    const target = innerWidth < 640 ? 0.66 : 1;
-    S = Math.max(1, Math.round(target * dpr)) / dpr;
+    S = polarScale();
     el.style.width = sprite.style.width = `${POLAR_CELL[0] * S}px`;
     el.style.height = sprite.style.height = `${POLAR_CELL[1] * S}px`;
     el.style.transformOrigin = `${POLAR_FEET[0] * S}px ${POLAR_FEET[1] * S}px`;
     sprite.style.backgroundSize = `${POLAR_CELL[0] * POLAR_POSES.length * S}px ${POLAR_CELL[1] * S}px`;
+    if (bowlEl) {
+      // the half coconut at his scale, its shell standing on the desk and its shadow just below
+      bowlEl.style.width = `${BOWL_CELL[0] * S}px`;
+      bowlEl.style.height = `${BOWL_CELL[1] * S}px`;
+      bowlEl.style.marginBottom = `${-(BOWL_CELL[1] - BOWL_EDGE[2] - 1) * S}px`;
+    }
     const f = st.frame; st.frame = ''; setFrame(f || 'idle1');
   }
   // up on the ruler he is drawn smaller, so the top bar has room for him
@@ -102,8 +186,26 @@ function initPolar() {
     return Math.min(1, css / S);
   }
   const place = () => {
-    el.style.transform = `translate(${Math.round(st.x - POLAR_FEET[0] * S)}px, ${Math.round(st.y - POLAR_FEET[1] * S - st.lift)}px) scale(${st.k.toFixed(3)})`;
+    const tx = Math.round(st.x - POLAR_FEET[0] * S), ty = Math.round(st.y - POLAR_FEET[1] * S - st.lift);
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${st.k.toFixed(3)})`;
     el.classList.toggle('left', st.facing < 0);
+    // turned forward about his chest, as he dives into the half coconut
+    const turn = st.rot ? `${st.facing < 0 ? 'scaleX(-1) ' : ''}rotate(${st.rot.toFixed(1)}deg)` : '';
+    if (turn || sprite.style.transform) {
+      sprite.style.transform = turn;
+      sprite.style.transformOrigin = turn ? `${POLAR_PIVOT[0] * S}px ${POLAR_PIVOT[1] * S}px` : '';
+    }
+    // at home only what the door of the coconut shows of him can be seen, and
+    // in the half coconut only what is above its front edge
+    let clip = '';
+    if (st.clip && st.clip.poly) {
+      clip = `polygon(${st.clip.poly.map(([x, y]) => `${(x - tx).toFixed(1)}px ${(y - ty).toFixed(1)}px`).join(', ')})`;
+    } else if (st.clip) {
+      const ox = POLAR_FEET[0] * S, oy = POLAR_FEET[1] * S;
+      const cx = ox + (st.clip.x - tx - ox) / st.k, cy = oy + (st.clip.y - ty - oy) / st.k;
+      clip = `circle(${(st.clip.r / st.k).toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`;
+    }
+    if (el.style.clipPath !== clip) { el.style.clipPath = clip; el.style.webkitClipPath = clip; }
   };
   const headerBottom = () => (document.getElementById('navbar')?.getBoundingClientRect().bottom || 86);
 
@@ -136,7 +238,12 @@ function initPolar() {
       return [...document.querySelectorAll('#bench .thing')].filter(t => !t.matches('.thing--keyboard'))
         .map(t => t.getBoundingClientRect()).filter(q => Math.abs(q.bottom - top) < 16);
     }
-    if (e.matches('.bench-shelf')) return [...e.querySelectorAll('.shelf-item')].map(t => t.getBoundingClientRect());
+    if (e.matches('.bench-shelf')) {
+      // what stands on the shelf, the half coconut too when it is there
+      const top = e.getBoundingClientRect().top;
+      return [...e.querySelectorAll('.shelf-item'), bowlEl].filter(Boolean).map(t => t.getBoundingClientRect())
+        .filter(q => q.width && Math.abs(q.bottom - top) < 16);
+    }
     if (e.matches('.letter')) return [...e.querySelectorAll('.letter-cup')].map(t => t.getBoundingClientRect());
     if (e.matches('.ruler-track')) return [document.querySelector('.ruler-walker').getBoundingClientRect()];
     return [];
@@ -260,6 +367,128 @@ function initPolar() {
     return p && inView(perchPoint(p)) ? p : null;
   }
 
+  // ---- home: his coconut ----
+  const cocoEl = document.getElementById('coco');
+  const coco = () => (cocoEl && !cocoEl.hidden && cocoEl.coco) || null;
+  const NEST_K = 0.75;                  // inside he is a little further away
+  // how far to the side his face is, when he turns it to you
+  const FACE = { idle2: 0, idle2Half: 0, idle2Shut: 0, idle4: 0.4, idle5: 0.4 };
+  // Where he is at home: 'out', just outside the door at his own size, where
+  // he flies to and from; 'door', his face in it; 'in', down out of sight
+  function nestSpot(name) {
+    const d = coco().door();
+    const k = name === 'out' ? 1 : NEST_K;
+    const hx = POLAR_HEAD[0] * (st.frame in FACE ? FACE[st.frame] : 1) * st.facing;
+    const y = d.y - POLAR_HEAD[1] * S * k + S + (name === 'in' ? (COCO_DOOR[2] + 26) * S : 0);
+    return { x: d.x - hx * S * k, y, k, r: name === 'out' ? null : d.r - 1.6 * S };
+  }
+  function cocoPerch() {
+    if (!coco()) return null;
+    return { el: cocoEl, home: true, anywhere: true, point: () => ({ ...nestSpot('out'), ok: true }) };
+  }
+  // from one place at home to another in a step's time, the door closing
+  // round him as he goes in and opening as he comes out
+  function nestMove(to, ms, arc = 0) {
+    st.nest = { from: st.nest ? st.nest.to : 'out', to, t0: now(), ms: Math.max(1, ms), arc };
+    nestPlace(now());
+  }
+  function nestPlace(t) {
+    const n = st.nest, d = coco().door();
+    const e = Math.min(1, (t - n.t0) / n.ms);
+    const q = e < 0.5 ? 2 * e * e : 1 - (2 - 2 * e) ** 2 / 2;
+    const a = nestSpot(n.from), b = nestSpot(n.to);
+    st.x = a.x + (b.x - a.x) * q;
+    st.y = a.y + (b.y - a.y) * q - Math.sin(Math.PI * q) * n.arc * S;
+    st.k = a.k + (b.k - a.k) * q;
+    const wide = 150 * S, ra = a.r ?? wide, rb = b.r ?? wide;
+    st.clip = (a.r === null && b.r === null) || (e >= 1 && b.r === null) ? null : { x: d.x, y: d.y, r: ra + (rb - ra) * q };
+  }
+  function leaveNest() {
+    st.nest = null; st.clip = null; st.leaving = false;
+  }
+  // ---- half a coconut on the desk ----
+  // a point of the half coconut, in art pixels, where it is in the window
+  function bowlAt(ax, ay) {
+    const r = bowlEl.getBoundingClientRect();
+    return { x: r.left + ax * S, y: r.top + ay * S };
+  }
+  const bowlInView = () => !!bowlEl && !!bowlEl.offsetParent && inView({ ...bowlAt(BOWL_RIM[0], BOWL_RIM[1]), ok: true });
+  function bowlPerch() {
+    if (!bowlInView()) return null;
+    const r = bowlEl.getBoundingClientRect();
+    const side = st.x < r.left + r.width / 2 ? -1 : 1;
+    return { el: bowlEl, bowl: true, side, point: () => ({ ...bowlAt(BOWL_RIM[0] + side * (BOWL_EDGE[0] - 7), BOWL_RIM[1] - 1), ok: true }) };
+  }
+  const CHEST = POLAR_PIVOT[1] - POLAR_FEET[1];   // his chest, above his feet
+  // Where he is at the half coconut, as where his chest is and how far he is
+  // turned forward: on the edge he came by ('rim', and 'out' to leave), bent
+  // in ('lean'), diving ('dive'), only the tips of his tail out ('tail'), down
+  // out of sight ('hid'), his eyes over the edge ('peek') or sitting up ('up')
+  function bowlSpot(name) {
+    const [cx, cy, , iy] = BOWL_RIM, s = st.bowlSide;
+    const onEdge = (turn) => {
+      const feet = bowlAt(cx + s * (BOWL_EDGE[0] - 7), cy - 1);
+      const a = turn * Math.PI / 180 * st.facing;
+      return { x: feet.x - CHEST * S * Math.sin(a), y: feet.y + CHEST * S * Math.cos(a), turn };
+    };
+    const at = (x, y, turn) => ({ ...bowlAt(x, y), turn });
+    const head = POLAR_HEAD[1] - CHEST;           // his head, from his chest
+    switch (name) {
+      case 'lean': return onEdge(40);
+      case 'dive': return at(cx + s * 4, cy + 2, 55);
+      case 'tail': return at(cx, cy + 31, 72);
+      case 'hid': return at(cx, cy + 72, 0);
+      case 'peek': return at(cx, cy + iy - 5 - head, 0);
+      case 'up': return at(cx - s * 2, cy + iy - 22 - head, 0);
+      default: return onEdge(0);
+    }
+  }
+  // what the front of the shell does not hide: everything but the inside
+  // below its front edge, its sides, and whatever is under it
+  function bowlShade() {
+    const [cx, cy, ix, iy] = BOWL_RIM, [ox, , bottom] = BOWL_EDGE;
+    const pts = [[-3000, -3000], [3000, -3000], [3000, bottom], [cx + ox + 8, bottom], [cx + ox + 8, cy], [cx + ix, cy]];
+    for (let i = 1; i < 16; i++) pts.push([cx + ix * Math.cos(Math.PI * i / 16), cy + iy * Math.sin(Math.PI * i / 16)]);
+    pts.push([cx - ix, cy], [cx - ox - 8, cy], [cx - ox - 8, bottom], [-3000, bottom]);
+    const r = bowlEl.getBoundingClientRect();
+    return pts.map(([x, y]) => [r.left + x * S, r.top + y * S]);
+  }
+  function bowlMove(to, ms, arc = 0) {
+    st.bw = { from: st.bw ? st.bw.to : 'rim', to, t0: now(), ms: Math.max(1, ms), arc };
+    bowlPlace(now());
+  }
+  function bowlPlace(t) {
+    const n = st.bw;
+    const e = Math.min(1, (t - n.t0) / n.ms);
+    const q = e < 0.5 ? 2 * e * e : 1 - (2 - 2 * e) ** 2 / 2;
+    const a = bowlSpot(n.from), b = bowlSpot(n.to);
+    const px = a.x + (b.x - a.x) * q, py = a.y + (b.y - a.y) * q - Math.sin(Math.PI * q) * n.arc * S;
+    st.rot = a.turn + (b.turn - a.turn) * q;
+    // placed by his feet as if he were not turned: the turn is about his chest
+    st.x = px + (POLAR_FEET[0] - POLAR_PIVOT[0]) * S;
+    st.y = py - CHEST * S;
+    st.k = 1;
+    st.clip = { poly: bowlShade() };
+  }
+  function leaveBowl() {
+    st.bw = null; st.rot = 0; st.clip = null; st.leaving = false;
+  }
+
+  // without motion he is simply at home, looking out of his door
+  function settleHome() {
+    const home = cocoPerch();
+    if (!home) return false;
+    if (st.onLeave) { st.onLeave(); st.onLeave = null; }
+    st.bw = null; st.rot = 0;
+    st.perch = home; st.mode = 'perch'; st.leaveAt = Infinity; st.homeUntil = 0; st.facing = 1;
+    st.queue = []; st.step = null; st.stepUntil = 0; st.lift = 0; st.leaving = false;
+    st.nest = { from: 'door', to: 'door', t0: 0, ms: 1, arc: 0 };
+    el.classList.remove('up-front');
+    setFrame('idle2');
+    nestPlace(now());
+    return true;
+  }
+
   // ---- what he says ----
   function fx(kind) {
     const f = document.createElement('span');
@@ -274,6 +503,8 @@ function initPolar() {
     if (kind === 'feather') { x = st.x; y = st.y - 40 * K; f.style.setProperty('--sway', `${(Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 30)}px`); }
     if (kind === 'kiss') { x = st.x + st.facing * POLAR_BEAK_DOWN[0] * K; y = st.y + POLAR_BEAK_DOWN[1] * K - 12; }
     if (kind === 'kissUp') { x = st.x + st.facing * 34 * K; y = st.y - 70 * K; }
+    if (st.perch && st.perch.home && st.nest && st.nest.to === 'in' && coco()) { const d = coco().door(); x = d.x + 4 * S; y = d.y - d.r * 0.3; }
+    if (st.perch && st.perch.bowl && st.bw && st.bw.to === 'hid' && bowlEl) { const q = bowlAt(BOWL_RIM[0] + 4, BOWL_RIM[1] - 2); x = q.x; y = q.y; }
     f.style.left = `${Math.round(x)}px`;
     f.style.top = `${Math.round(y)}px`;
     document.body.appendChild(f);
@@ -291,7 +522,68 @@ function initPolar() {
   const blinkSide = () => seq(['idle1Half', 'idle1Shut', 'idle1Half'], 55).map((s, i) => (i === 1 ? { ...s, ms: 90 } : s));
   const blinkFront = () => seq(['idle2Half', 'idle2Shut', 'idle2Half'], 55).map((s, i) => (i === 1 ? { ...s, ms: 90 } : s));
   const hopUp = (height = 18) => seq(['hopSquash', 'hop1', 'hop2', 'hop3', 'hop4', 'hop5', 'hopSquash'], 85, i => ({ lift: [0, 2, 8, height, 8, 2, 0][i] }));
+  // in by the door: he turns round to look out, blinks, and goes down inside
+  const goIn = () => [{ f: 'flap4', ms: 90 }, { f: 'flap5', ms: 260, nest: ['door'], push: 0.007 }, { f: 'idle2', ms: 650 },
+    ...blinkFront(), { f: 'idle2', ms: 500 }, { f: 'idle2', ms: 450, nest: ['in'] }, { f: 'idle2', ms: 900 }];
+  // out by the door: a look outside, and off he flies
+  const goOut = () => [{ f: 'idle2', ms: 450, nest: ['door'] }, { f: 'idle2', ms: 420 }, { f: 'idle1', ms: 240, face: -1 },
+    { f: 'flap2', ms: 90 }, { f: 'flap3', ms: 240, nest: ['out'], push: -0.007 }];
+  function homeThought(t) {
+    if (st.nest.to === 'out') { const next = st.pending; st.pending = null; takeOff(next); return; }
+    if (t > st.homeUntil && !st.hold) { st.leaving = true; queue(goOut()); return; }
+    if (st.nest.to === 'door') { queue({ f: st.frame, ms: 450, nest: ['in'] }, { f: 'idle2', ms: 900 }); return; }
+    const r = Math.random(), night = isDark();
+    if (r < (night ? 0.5 : 0.22)) {
+      // a nap
+      queue(seq(['sleep4', 'sleep4', 'sleep4'], 1200, i => (i === 1 ? { fx: 'zzz' } : {})));
+    } else if (r < (night ? 0.78 : 0.62)) {
+      // he looks out at you, blinks, and goes back in
+      queue({ f: 'idle2', ms: 450, nest: ['door'] }, { f: 'idle2', ms: 900 + Math.random() * 900 }, blinkFront(),
+        { f: 'idle2', ms: 600 }, { f: 'idle2', ms: 450, nest: ['in'] }, { f: 'idle2', ms: 1200 + Math.random() * 1800 });
+    } else if (r < (night ? 0.9 : 0.82)) {
+      // a look round from the door, one way and then the other
+      const side = Math.random() < 0.5 ? 1 : -1;
+      queue({ f: 'idle1', ms: 450, face: side, nest: ['door'] }, { f: 'idle1', ms: 800 }, blinkSide(), { f: 'idle1', ms: 220, face: -side },
+        { f: 'idle1', ms: 900 }, { f: 'idle1', ms: 450, nest: ['in'] }, { f: 'idle1', ms: 1500 });
+    } else {
+      // a song from the door
+      queue({ f: 'idle1', ms: 450, face: -1, nest: ['door'] }, seq(['chirp1', 'chirp2', 'chirp3', 'chirp4', 'chirp5', 'chirp4', 'chirp3'], 150,
+        i => (i === 1 || i === 4 ? { fx: 'note' } : {})), { f: 'idle1', ms: 500 }, { f: 'idle1', ms: 450, nest: ['in'] }, { f: 'idle1', ms: 1500 });
+    }
+  }
+  // into the half coconut: a look, bent in, head first down to the tips of his tail
+  const intoBowl = () => [{ f: 'idle1', ms: 450 }, ...blinkSide(), { f: 'peck1', ms: 200 }, { f: 'peck2', ms: 340, bowl: ['lean'] },
+    { f: 'peck3', ms: 380, bowl: ['dive'] }, { f: 'peck3', ms: 460, bowl: ['tail'] }, { f: 'peck3', ms: 800 },
+    { f: 'peck3', ms: 420, bowl: ['hid'] }, { f: 'idle2', ms: 900 }];
+  // and out: eyes over the edge, sitting up, a hop onto the edge
+  const outOfBowl = () => [{ f: 'idle2', ms: 420, bowl: ['peek'] }, { f: 'idle2', ms: 450 }, ...blinkFront(),
+    { f: 'idle1', ms: 400, face: st.bowlSide, bowl: ['up'] }, { f: 'idle1', ms: 450 }, { f: 'hopSquash', ms: 110 },
+    { f: 'hopStretch', ms: 300, bowl: ['out', 14] }, { f: 'hopSquash', ms: 120 }, { f: 'idle1', ms: 350 }];
+  function bowlThought(t) {
+    if (st.bw.to === 'out') { const next = st.pending; st.pending = null; takeOff(next); return; }
+    if (t > st.bowlUntil && !st.hold) { st.leaving = true; queue(outOfBowl()); return; }
+    if (st.bw.to === 'rim' || st.bw.to === 'lean') { queue(intoBowl()); return; }
+    const r = Math.random();
+    if (r < 0.4) {
+      // his eyes over the edge, a blink, and down again
+      queue({ f: 'idle2', ms: 440, bowl: ['peek'] }, { f: 'idle2', ms: 900 + Math.random() * 700 }, blinkFront(), { f: 'idle2', ms: 500 },
+        { f: 'idle2', ms: 400, bowl: ['hid'] }, { f: 'idle2', ms: 1000 + Math.random() * 1500 });
+    } else if (r < 0.62) {
+      // the tips of his tail, up for a while
+      queue({ f: 'peck3', ms: 420, bowl: ['tail'] }, { f: 'peck3', ms: 900 }, { f: 'peck3', ms: 380, bowl: ['hid'] }, { f: 'peck3', ms: 1300 });
+    } else if (r < 0.82) {
+      // he sits up and sings
+      queue({ f: 'idle1', ms: 440, face: Math.random() < 0.5 ? 1 : -1, bowl: ['up'] }, seq(['chirp1', 'chirp2', 'chirp3', 'chirp4', 'chirp5', 'chirp4', 'chirp3'], 150,
+        i => (i === 1 || i === 4 ? { fx: 'note' } : {})), { f: 'idle1', ms: 500 }, { f: 'idle1', ms: 400, bowl: ['hid'] }, { f: 'idle1', ms: 1200 });
+    } else {
+      queue(seq(['idle2', 'idle2'], 1300, i => (i === 0 ? { fx: 'zzz' } : {})));
+    }
+  }
   function idleThought() {
+    if (st.perch && st.perch.home) { homeThought(now()); return; }
+    if (st.perch && st.perch.bowl) { bowlThought(now()); return; }
+    // on the desk, once in a while, into the half coconut
+    if (st.perch && st.perch.desk && Math.random() < 0.04) { const b = bowlPerch(); if (b) { takeOff(b); return; } }
     const night = isDark();
     const onDesk = st.perch && st.perch.desk;
     const r = Math.random();
@@ -359,6 +651,8 @@ function initPolar() {
     }
     if (t < st.stepUntil) return;
     if (!st.queue.length) idleThought();
+    // what he thought of was to leave
+    if (st.mode !== 'perch' || !st.queue.length) return;
     const n = st.queue.shift();
     st.step = n;
     st.stepStart = t;
@@ -366,6 +660,9 @@ function initPolar() {
     st.lift = n.lift ? n.lift * S * st.k : 0;
     if (n.face) st.facing = n.face;
     if (n.emit) Bus.emit(...n.emit);
+    if (n.nest && st.perch && st.perch.home) nestMove(n.nest[0], n.ms, n.nest[1] || 0);
+    if (n.bowl && st.perch && st.perch.bowl) bowlMove(n.bowl[0], n.ms, n.bowl[1] || 0);
+    if (n.push && coco()) coco().push(n.push);
     if (n.walk || n.anim) return;
     setFrame(n.f);
     if (n.fx) fx(n.fx);
@@ -400,6 +697,29 @@ function initPolar() {
     st.step = null; st.stepUntil = 0; st.lift = 0;
     const touchdown = seq(['flap4', 'flap5'], 90).concat([{ f: 'hopSquash', ms: 110 }, { f: 'idle1', ms: 300 }]);
     el.classList.toggle('up-front', !!(st.perch && st.perch.ruler));
+    if (st.perch && st.perch.bowl) {
+      // on the edge of the half coconut, facing into it
+      st.bowlSide = st.perch.side;
+      st.facing = -st.bowlSide;
+      st.bw = { from: 'rim', to: 'rim', t0: t, ms: 1, arc: 0 };
+      bowlPlace(t);
+      st.leaving = false; st.pending = null;
+      st.bowlUntil = t + 5500 + Math.random() * 2000;
+      st.queue = touchdown.concat(intoBowl());
+      st.leaveAt = Infinity;
+      Bus.emit('polar:landed', { x: st.x, y: st.y, el: st.perch.el });
+      return;
+    }
+    if (st.perch && st.perch.home) {
+      // home: in by the door, a look out, and not for long
+      st.nest = { from: 'out', to: 'out', t0: t, ms: 1, arc: 0 };
+      st.leaving = false; st.pending = null;
+      st.homeUntil = t + 3500 + Math.random() * 2000;
+      st.queue = goIn();
+      st.leaveAt = Infinity;
+      Bus.emit('polar:landed', { x: st.x, y: st.y, el: st.perch.el });
+      return;
+    }
     if (st.perch && st.perch.shoulder) {
       st.facing = st.perch.face;
       st.queue = touchdown.concat([{ f: 'idle1', ms: 450, face: st.perch.face }], shoulderHello(), goToSleep());
@@ -427,16 +747,51 @@ function initPolar() {
 
   function takeOff(target) {
     const t = now();
+    // at home he first goes out by the door, and then on to wherever it was
+    if (st.perch && st.perch.home && st.mode === 'perch' && st.nest && st.nest.to !== 'out') {
+      if (target) st.pending = target;
+      if (!st.leaving) {
+        st.leaving = true;
+        st.homeUntil = 0;
+        st.queue = goOut();
+        // a move under way ends first
+        if (!(st.step && st.step.nest)) { st.step = null; st.stepUntil = 0; }
+      }
+      return;
+    }
+    // in the half coconut he climbs out first
+    if (st.perch && st.perch.bowl && st.mode === 'perch' && st.bw && st.bw.to !== 'rim' && st.bw.to !== 'out') {
+      if (target) st.pending = target;
+      if (!st.leaving) {
+        st.leaving = true;
+        st.bowlUntil = 0;
+        st.queue = outOfBowl();
+        if (!(st.step && st.step.bowl)) { st.step = null; st.stepUntil = 0; }
+      }
+      return;
+    }
+    if (st.perch && st.perch.bowl) leaveBowl();
+    const fromHome = !!(st.perch && st.perch.home);
+    if (fromHome) leaveNest();
     if (st.onLeave) { st.onLeave(); st.onLeave = null; }
     el.classList.remove('up-front');
-    // time to visit his friend on the ruler?
+    // time to visit his friend on the ruler, or to go home for a while?
     if (!target && t > st.visitAt && !st.follow) {
       st.visitAt = t + 55000 + Math.random() * 55000;
       target = friendPerch();
     }
+    if (!target && !fromHome && t > st.homeAt && !st.follow && coco()) {
+      st.homeAt = t + 300000 + Math.random() * 180000;
+      target = cocoPerch();
+    }
     st.perch = target || nextPerch();
-    st.mode = 'launch';
-    st.launchAt = t;
+    if (fromHome) {
+      // straight off from the door: out and down, away from the top bar
+      st.mode = 'fly'; st.facing = -1; st.vx = -2.2; st.vy = 0.6;
+    } else {
+      st.mode = 'launch';
+      st.launchAt = t;
+    }
     st.queue = []; st.step = null; st.lift = 0;
   }
   // crouch, spring, wings up: then he is off
@@ -444,6 +799,24 @@ function initPolar() {
 
   function kiss() {
     Bus.emit('polar:kiss');
+    if (st.mode === 'perch' && st.perch && st.perch.bowl) {
+      if (st.leaving || !st.bw || st.bw.to === 'rim' || st.bw.to === 'out') { fx('heart'); return; }
+      st.queue = [{ f: 'idle2', ms: 380, bowl: ['peek'] }, { f: 'idle2', ms: 500, fx: 'heart' }, ...blinkFront(),
+        { f: 'idle1', ms: 400, bowl: ['up'] }, ...seq(['chirp1', 'chirp2', 'chirp3', 'chirp4', 'chirp5'], 140, i => (i === 1 ? { fx: 'note' } : i === 3 ? { fx: 'heart' } : {})),
+        { f: 'idle1', ms: 500 }, { f: 'idle1', ms: 400, bowl: ['hid'] }, { f: 'idle2', ms: 900 }];
+      if (!(st.step && st.step.bowl)) { st.step = null; st.stepUntil = 0; }
+      st.bowlUntil = Math.max(st.bowlUntil, now() + 3000);
+      return;
+    }
+    if (st.mode === 'perch' && st.perch && st.perch.home) {
+      if (st.leaving || st.nest.to === 'out') { fx('heart'); return; }
+      st.queue = [{ f: 'idle2', ms: 380, nest: ['door'] }, { f: 'idle1', ms: 200, face: -1 },
+        ...seq(['chirp1', 'chirp2', 'chirp3', 'chirp4', 'chirp5'], 140, i => (i === 1 ? { fx: 'heart' } : i === 3 ? { fx: 'note' } : {})),
+        { f: 'idle2', ms: 700, fx: 'heart' }, ...blinkFront(), { f: 'idle2', ms: 500 }, { f: 'idle2', ms: 450, nest: ['in'] }, { f: 'idle2', ms: 900 }];
+      if (!(st.step && st.step.nest)) { st.step = null; st.stepUntil = 0; }
+      st.homeUntil = Math.max(st.homeUntil, now() + 3000);
+      return;
+    }
     if (st.mode === 'perch' && st.perch && st.perch.shoulder) {
       st.queue = [{ f: 'sleep1', ms: 250 }, { f: 'idle1Shut', ms: 150 }, { f: 'idle1Half', ms: 90 }, { f: 'idle1', ms: 300, face: st.perch.face }, ...shoulderHello(), ...goToSleep()];
       st.step = null; st.stepUntil = 0;
@@ -473,10 +846,14 @@ function initPolar() {
       if (!st.perch) st.perch = nextPerch();
       if (!st.perch) return;
       const p = perchPoint(st.perch);
-      // the spot scrolled away: another one, or the ruler, never mid-air
-      if (!inView(p, st.perch.anywhere)) { st.perch = nextPerch(); return; }
+      // the spot scrolled away: another one, or the ruler, never mid-air (his
+      // home is always in sight, right against the edge of the window)
+      if (!st.perch.home && !inView(p, st.perch.anywhere)) { st.perch = nextPerch(); return; }
       tx = p.x; ty = p.y; target = st.perch;
     }
+    // far out of the window (the page jumped a long way): he comes back from its edge
+    st.x = Math.max(-160, Math.min(innerWidth + 160, st.x));
+    st.y = Math.max(-160, Math.min(innerHeight + 160, st.y));
     const dx = tx - st.x, dy = ty - st.y, d = Math.hypot(dx, dy);
     const fast = st.zoom > t ? 1.8 : 1;
     const want = Math.min(4.4 * k * fast, 0.5 * k + d * 0.055);
@@ -503,6 +880,8 @@ function initPolar() {
     if (d < 2.5 && st.zoom <= t) {
       st.x = tx; st.y = ty;
       if (st.follow > t) { st.mode = 'perch'; st.vx = st.vy = 0; st.queue = [{ f: 'hopSquash', ms: 100 }, { f: 'idle1', ms: 400 }]; st.step = null; st.stepUntil = 0; return; }
+      // the page moved while he flew: a spot now in the way of a click is no spot
+      if (target && !target.point && !target.el.closest('#bench') && covers(target.el, hitBox({ x: st.x, y: st.y }), controlsInView())) { st.perch = nextPerch(); return; }
       if (target) { st.k = target.ruler ? rulerScale() : 1; land(t); }
     }
   }
@@ -515,6 +894,13 @@ function initPolar() {
     const dt = last ? Math.min((ts - last) / 16.667, 3) : 1;
     last = ts;
     const k = animSpeed * 2;
+    // without motion he is either asleep on my shoulder, while it is in sight,
+    // or at home, looking out of his door
+    if (k === 0 && coco()) {
+      const asleep = st.mode === 'perch' && st.perch && st.perch.shoulder && inView(perchPoint(st.perch));
+      const atDoor = st.mode === 'perch' && st.perch && st.perch.home && st.nest && st.nest.from === 'door' && st.nest.to === 'door';
+      if (!asleep && !atDoor) settleHome();
+    }
     if (st.mode === 'launch') {
       // the take-off frames play before he moves
       let t = ts - st.launchAt, i = 0;
@@ -527,13 +913,23 @@ function initPolar() {
         if (Math.hypot(pointer.x - st.x, pointer.y + 2 - st.y) > 6 && k > 0) st.mode = 'fly';
         else runQueue(ts, dt);
       } else if (st.perch) {
-        const p = perchPoint(st.perch);
+        const home = st.perch.home, bowl = st.perch.bowl;
+        if (home) nestPlace(ts);
+        if (bowl && !bowlInView()) { leaveBowl(); if (k > 0) takeOff(); place(); return; }
+        if (bowl) bowlPlace(ts);
+        const p = home || bowl ? { x: st.x, y: st.y, ok: true } : perchPoint(st.perch);
         st.x = p.x; st.y = p.y;
         if (st.perch.ruler && !st.perch.friend && ts > (st.lookAt || 0)) {
           st.lookAt = ts + 1200;
           if (candidates().length) st.leaveAt = Math.min(st.leaveAt, ts);
         }
-        if (k > 0 && !st.hold && (!inView(p, st.perch.anywhere) || (ts > st.leaveAt && ts > st.stepUntil))) takeOff();
+        // a scroll that brings his coconut over him, or a button that turns up
+        // under him: he would be in the way of a click, so he moves on at once
+        if (!home && !bowl && !st.perch.ruler && !st.perch.shoulder && !st.perch.el.closest('#bench') && ts > (st.coverAt || 0)) {
+          st.coverAt = ts + 250;
+          if (k > 0 && !st.hold && covers(st.perch.el, hitBox(p), controlsInView())) { takeOff(); place(); return; }
+        }
+        if (k > 0 && !st.hold && ((!home && !bowl && !inView(p, st.perch.anywhere)) || (ts > st.leaveAt && ts > st.stepUntil))) takeOff();
         else if (k > 0) runQueue(ts, dt);
       } else if (k > 0) takeOff();
     } else if (k > 0) {
@@ -545,8 +941,9 @@ function initPolar() {
   // ---- start: he flies in and lands on the photo, next to me ----
   function start() {
     applyScale();
-    st.perch = (shoulderInView() && shoulderPerch()) || pickPerch() || rulerPerch();
-    if (st.perch) {
+    st.perch = (shoulderInView() && shoulderPerch()) || (animSpeed === 0 && cocoPerch()) || pickPerch() || rulerPerch();
+    if (st.perch && st.perch.home) settleHome();
+    else if (st.perch) {
       const p = perchPoint(st.perch);
       st.x = p.x; st.y = p.y;
       if (animSpeed > 0) {
@@ -570,6 +967,8 @@ function initPolar() {
     const t = now();
     // a second click soon after: he comes to sit on the pointer for a while
     if (t - st.lastClick < 1400 && animSpeed > 0) {
+      if (st.perch && st.perch.home) { leaveNest(); if (coco()) coco().push(-0.006); }
+      if (st.perch && st.perch.bowl) leaveBowl();
       st.follow = t + 9000;
       pointer.x = e.clientX; pointer.y = e.clientY;
       el.classList.add('following');
@@ -588,7 +987,7 @@ function initPolar() {
   el.addEventListener('focus', () => { st.hold = true; });
   el.addEventListener('blur', () => { st.hold = false; });
   window.addEventListener('scroll', () => {
-    if (animSpeed === 0 || st.follow || st.zoom > now() || (st.perch && (st.perch.shoulder || st.perch.friend))) return;
+    if (animSpeed === 0 || st.follow || st.zoom > now() || (st.perch && (st.perch.shoulder || st.perch.friend || st.perch.home))) return;
     if (shoulderInView()) takeOff(shoulderPerch());
   }, { passive: true });
   // the desk comes into sight: he flies down to walk on it
@@ -606,6 +1005,8 @@ function initPolar() {
     if (animSpeed === 0) return;
     if (st.onLeave) { st.onLeave(); st.onLeave = null; }
     el.classList.remove('up-front');
+    if (st.perch && st.perch.home) { leaveNest(); if (coco()) coco().push(-0.008); }
+    if (st.perch && st.perch.bowl) leaveBowl();
     st.zoom = now() + 3200; st.mode = 'fly'; st.perch = null;
   });
   Bus.on('polar:come', (sel) => {
@@ -615,14 +1016,53 @@ function initPolar() {
     setTimeout(kiss, 2500);
   });
   Bus.on('polar:visit-now', () => { if (animSpeed > 0) { const f = friendPerch(); if (f) takeOff(f); } });
+  // a press on the half coconut: in it, his eyes over the edge and a song;
+  // anywhere else, he comes to dive in
+  if (bowlEl) bowlEl.addEventListener('click', () => {
+    if (animSpeed === 0 || st.follow > now() || st.zoom > now()) return;
+    if (st.perch && st.perch.bowl) { if (st.mode === 'perch') kiss(); return; }
+    const b = bowlPerch();
+    if (!b) return;
+    if (st.mode === 'fly') st.perch = b;
+    else takeOff(b);
+  });
+  // a knock on his coconut: at home he comes to the door; anywhere else he
+  // comes home
+  Bus.on('coco:knock', () => {
+    if (animSpeed === 0) { if (st.perch && st.perch.home) fx('heart'); return; }
+    if (st.follow > now() || st.zoom > now()) return;
+    if (st.perch && st.perch.home) { if (st.mode === 'perch') kiss(); return; }
+    if (st.mode === 'fly') st.perch = cocoPerch();
+    else takeOff(cocoPerch());
+  });
   // a sneeze nearby: he flaps up in surprise, then settles and has a word about it
   Bus.on('sneeze', () => {
+    if (st.perch && st.perch.bowl) {
+      if (st.mode === 'perch' && animSpeed > 0 && !st.leaving && st.bw && st.bw.to === 'hid') {
+        st.queue = [{ f: 'idle2', ms: 300, bowl: ['peek'] }, { f: 'idle2', ms: 900 }, ...blinkFront(), { f: 'idle2', ms: 400, bowl: ['hid'] }, { f: 'idle2', ms: 900 }];
+      }
+      return;
+    }
+    if (st.perch && st.perch.home) {
+      // at home he comes to the door, to see what it was
+      if (st.mode === 'perch' && animSpeed > 0 && !st.leaving && st.nest && st.nest.to === 'in') {
+        st.queue = [{ f: 'idle2', ms: 300, nest: ['door'] }, { f: 'idle2', ms: 900 }, ...blinkFront(), { f: 'idle2', ms: 450, nest: ['in'] }, { f: 'idle2', ms: 900 }];
+      }
+      return;
+    }
     if (st.mode !== 'perch' || animSpeed === 0 || (st.perch && st.perch.friend)) return;
     st.queue = seq(['flap2', 'flap3', 'flap4', 'flap3', 'flap5'], 80, i => ({ lift: [4, 10, 12, 8, 0][i] }));
     st.queue.push({ f: 'idle1', ms: 250 }, ...seq(['chirp2', 'chirp3', 'chirp2'], 120, i => (i === 1 ? { fx: 'note' } : {})), { f: 'idle1', ms: 700 });
     st.step = null; st.stepUntil = 0;
   });
-  window.addEventListener('resize', () => { applyScale(); if (st.mode === 'perch' && st.perch) { const p = perchPoint(st.perch); st.x = p.x; st.y = p.y; place(); } });
+  window.addEventListener('resize', () => {
+    applyScale();
+    if (st.mode !== 'perch' || !st.perch) return;
+    if (st.perch.home) nestPlace(now());
+    else if (st.perch.bowl && st.bw) bowlPlace(now());
+    else { const p = perchPoint(st.perch); st.x = p.x; st.y = p.y; }
+    place();
+  });
   start();
   // for the page's own tests
   el.state = st;

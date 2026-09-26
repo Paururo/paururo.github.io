@@ -64,9 +64,9 @@ const PAGE_PARTS = [
   'injectSvgDefs', 'fillSprites', 'renderSelectedWork', 'renderFeaturedTools',
   'renderBlogPosts', 'renderCareerChromosome', 'renderTopicTree',
   'initNavigation', 'initDarkMode', 'initSpeedControl', 'initExpandableCards',
-  'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup', 'initPolar',
-  'initHelices', 'initGenomeRuler', 'scatterBugs', 'initStatBubbles',
-  'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
+  'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup',
+  'initCoconut', 'initPolar', 'initHelices', 'initGenomeRuler', 'scatterBugs',
+  'initStatBubbles', 'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
   'fetchToolDownloads',
 ];
 
