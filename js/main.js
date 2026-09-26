@@ -57,31 +57,23 @@ function animateNumber(elementId, target, format = n => n.toLocaleString('en-US'
 }
 
 // ==================== INIT ====================
+// Each part of the page starts on its own, so one that fails (an old
+// browser, or a file a cache kept from an older version) cannot stop
+// the ones after it, Polar among them
+const PAGE_PARTS = [
+  'injectSvgDefs', 'fillSprites', 'renderSelectedWork', 'renderFeaturedTools',
+  'renderBlogPosts', 'renderCareerChromosome', 'renderTopicTree',
+  'initNavigation', 'initDarkMode', 'initSpeedControl', 'initExpandableCards',
+  'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup', 'initPolar',
+  'initHelices', 'initGenomeRuler', 'scatterBugs', 'initStatBubbles',
+  'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
+  'fetchToolDownloads',
+];
+
 document.addEventListener('DOMContentLoaded', () => {
-  injectSvgDefs();
-  fillSprites();
-  renderSelectedWork();
-  renderFeaturedTools();
-  renderBlogPosts();
-  renderCareerChromosome();
-  renderTopicTree();
-  initNavigation();
-  initDarkMode();
-  initSpeedControl();
-  initExpandableCards();
-  initKoiPond();
-  initPondControls();
-  initBench();
-  initLetterCup();
-  initPolar();
-  initHelices();
-  initGenomeRuler();
-  scatterBugs();
-  initStatBubbles();
-  initPubFilters();
-  fetchPublications();
-  fetchGitHubRepos();
-  fetchToolDownloads();
+  PAGE_PARTS.forEach(name => {
+    try { window[name](); } catch (err) { console.error(`${name} did not start:`, err); }
+  });
 });
 
 // ==================== NAVIGATION ====================

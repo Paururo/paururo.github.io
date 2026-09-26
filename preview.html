@@ -3416,7 +3416,10 @@ function renderTopicTree() {
   if (!holder._fitBound) {
     holder._fitBound = true;
     if (document.fonts) document.fonts.ready.then(() => holder._fit());
-    if (window.matchMedia) window.matchMedia('(max-width: 640px)').addEventListener('change', () => holder._fit());
+    const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)');
+    // Safari before 14 only has addListener
+    if (narrow && narrow.addEventListener) narrow.addEventListener('change', () => holder._fit());
+    else if (narrow && narrow.addListener) narrow.addListener(() => holder._fit());
   }
 
   // grow in once, when first seen
@@ -4230,12 +4233,31 @@ function initPolar() {
     }
     return { el: e, ax: (x - r.left) / r.width, dy, ...extra };
   }
+  // Links and buttons he must not sit in front of, or a click meant for them
+  // reaches him instead. On the desk he plays among the toys, and on the
+  // ruler clicks go through him.
+  const CONTROLS = 'a[href], button, input, select, textarea, summary, label, [role="button"], [tabindex]:not([tabindex="-1"])';
+  const controlsInView = () => [...document.querySelectorAll(CONTROLS)]
+    .filter(c => !el.contains(c) && !c.closest('#bench, .genome-ruler'))
+    .map(c => ({ c, r: c.getBoundingClientRect() }))
+    .filter(({ r }) => r.width && r.height && r.bottom > 0 && r.top < innerHeight);
+  // the part of him that takes clicks (.polar-hit) with his feet at pt, less
+  // the few pixels his feet sink into the surface
+  const hitBox = (pt) => ({
+    left: pt.x + (0.24 * POLAR_CELL[0] - POLAR_FEET[0]) * S, right: pt.x + (0.78 * POLAR_CELL[0] - POLAR_FEET[0]) * S,
+    top: pt.y + (0.16 * POLAR_CELL[1] - POLAR_FEET[1]) * S, bottom: pt.y - 4,
+  });
+  const covers = (e, box, controls) => controls.some(({ c, r }) => !c.contains(e)
+    && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top);
   function candidates() {
     const out = [];
+    const controls = controlsInView();
     POLAR_PERCHES.forEach(([sel, ax, dy]) => document.querySelectorAll(sel).forEach(e => {
       if (e.closest('[hidden]')) return;
       const p = spotOn(e, ax, dy, e.matches('.bench-desk') ? { desk: true, tilt: 0 } : {});
-      if (p && inView(perchPoint(p))) out.push(p);
+      if (!p) return;
+      const pt = perchPoint(p);
+      if (inView(pt) && (e.closest('#bench') || !covers(e, hitBox(pt), controls))) out.push(p);
     }));
     return out;
   }
@@ -4731,31 +4753,23 @@ function animateNumber(elementId, target, format = n => n.toLocaleString('en-US'
 }
 
 // ==================== INIT ====================
+// Each part of the page starts on its own, so one that fails (an old
+// browser, or a file a cache kept from an older version) cannot stop
+// the ones after it, Polar among them
+const PAGE_PARTS = [
+  'injectSvgDefs', 'fillSprites', 'renderSelectedWork', 'renderFeaturedTools',
+  'renderBlogPosts', 'renderCareerChromosome', 'renderTopicTree',
+  'initNavigation', 'initDarkMode', 'initSpeedControl', 'initExpandableCards',
+  'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup', 'initPolar',
+  'initHelices', 'initGenomeRuler', 'scatterBugs', 'initStatBubbles',
+  'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
+  'fetchToolDownloads',
+];
+
 document.addEventListener('DOMContentLoaded', () => {
-  injectSvgDefs();
-  fillSprites();
-  renderSelectedWork();
-  renderFeaturedTools();
-  renderBlogPosts();
-  renderCareerChromosome();
-  renderTopicTree();
-  initNavigation();
-  initDarkMode();
-  initSpeedControl();
-  initExpandableCards();
-  initKoiPond();
-  initPondControls();
-  initBench();
-  initLetterCup();
-  initPolar();
-  initHelices();
-  initGenomeRuler();
-  scatterBugs();
-  initStatBubbles();
-  initPubFilters();
-  fetchPublications();
-  fetchGitHubRepos();
-  fetchToolDownloads();
+  PAGE_PARTS.forEach(name => {
+    try { window[name](); } catch (err) { console.error(`${name} did not start:`, err); }
+  });
 });
 
 // ==================== NAVIGATION ====================
