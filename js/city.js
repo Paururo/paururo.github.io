@@ -146,24 +146,24 @@ function buildCity(lineages) {
   fill(36, 6, 28, 1, 1, 6, P.ochre, 'snpick'); fill(46, 6, 28, 1, 1, 6, P.ochre, 'snpick');
   fill(38, 0, 28, 3, 2, 2, P.wood, 'snpick');                                   // the crate the picks go in
 
-  // ---- IQ-TREE: a park with a tree that branches in two, and in two again ----
+  // ---- a park by the observatory, with a tree that branches in two, and in two again ----
   ground(48, 27, 9, 9, P.grass2);
   const crown = (cx, cy, cz, r) => {
     for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++) {
       if (dx * dx + dy * dy * 1.6 + dz * dz > r * r + 0.8) continue;
-      put(cx + dx, cy + dy, cz + dz, (dx + dy + dz) % 3 ? P.leaf : P.leaf2, 'IQ-TREE');
+      put(cx + dx, cy + dy, cz + dz, (dx + dy + dz) % 3 ? P.leaf : P.leaf2, '');
     }
   };
-  // a tree that splits in two, and each half in two again, like the ones it infers
+  // a tree that splits in two, and each half in two again, like a phylogeny
   const split = (x, y, z, dir, len, depth) => {
     let cx = x, cy = y;
-    for (let i = 0; i < len; i++) { cx += dir[0]; cy += 1; put(cx, cy, z + dir[1] * Math.floor(i / 2), P.trunk, 'IQ-TREE'); }
+    for (let i = 0; i < len; i++) { cx += dir[0]; cy += 1; put(cx, cy, z + dir[1] * Math.floor(i / 2), P.trunk, ''); }
     const cz = z + dir[1] * Math.floor((len - 1) / 2);
     if (depth === 0) { crown(cx, cy + 1, cz, 2); return; }
     split(cx, cy, cz, [-1, dir[1] || 1], len - 1, depth - 1);
     split(cx, cy, cz, [1, dir[1] || -1], len - 1, depth - 1);
   };
-  fill(52, 0, 31, 2, 6, 2, P.trunk, 'IQ-TREE');
+  fill(52, 0, 31, 2, 6, 2, P.trunk, '');
   split(52, 5, 31, [-1, 1], 4, 1);
   split(53, 5, 32, [1, -1], 4, 1);
 
@@ -294,7 +294,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   const trains = Object.entries(city.tracks).map(([line, path], i) => {
     const t = trainOf(LINES[line]);
     scene.add(t);
-    return { t, path, s: (i * 7) % path.length, dir: 1, speed: 0.06 + 0.012 * i };
+    return { t, path, color: LINES[line], s: (i * 7) % path.length, dir: 1, speed: 0.06 + 0.012 * i };
   });
   // the reads, running down the cables from the sequencer to the station
   const reads = [];
@@ -433,8 +433,10 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       mesh.instanceColor.needsUpdate = true;
     });
     if (lit && tags.get(lit)) tags.get(lit).el.classList.remove('lit');
+    map.querySelectorAll('.city-map-stop.lit').forEach(g => g.classList.remove('lit'));
     lit = tag;
     if (lit && tags.get(lit)) tags.get(lit).el.classList.add('lit');
+    if (lit) map.querySelector(`.city-map-stop[data-tag="${lit}"]`)?.classList.add('lit');
     canvas.style.cursor = lit ? 'pointer' : 'grab';
     dirty = true;
   }
@@ -467,6 +469,60 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   arrows.children[0].addEventListener('click', () => turn(-1));
   arrows.children[1].addEventListener('click', () => turn(1));
   stage.appendChild(arrows);
+
+  // ---- the map of the lines, in a corner: the same city without buildings ----
+  const map = document.createElement('div');
+  map.className = 'city-map';
+  map.setAttribute('aria-hidden', 'true');
+  const stop = (tag, x, y, name, below, dashed) => `<g class="city-map-stop" data-tag="${tag}"><title>${esc(name)}</title>`
+    + `<circle cx="${x}" cy="${y}" r="5"${dashed ? ' stroke-dasharray="2 2"' : ''}/>`
+    + `<text x="${x}" y="${below ? y + 14 : y - 8}" text-anchor="middle">${esc(name)}</text></g>`;
+  map.innerHTML = `<svg viewBox="0 0 292 128" role="presentation">
+    <g fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13 60 H45" stroke="${P.red}"/><path d="M13 65.3 H45" stroke="${P.blue}"/><path d="M13 70.7 H45" stroke="${P.green}"/><path d="M13 76 H45" stroke="${P.ochre}"/>
+      <path class="city-map-line" data-line="red" d="M59 58 L87 30 H182" stroke="${P.red}"/>
+      <path class="city-map-line" data-line="blue" d="M59 64 L73 50 H210" stroke="${P.blue}"/>
+      <path class="city-map-line" data-line="green" d="M59 70 H200" stroke="${P.green}"/>
+      <path class="city-map-line" data-line="ochre" d="M59 77 H64 L78 91 H150" stroke="${P.ochre}"/>
+      <path class="city-map-line" data-line="plum" d="M200 70 V110 H212" stroke="${P.plum}"/>
+      <path d="M212 110 H272" stroke="${P.plum}" stroke-dasharray="2 5"/>
+      <path d="M51 84 V106" stroke="${P.steel}" stroke-dasharray="3 3"/>
+    </g>
+    <g class="city-map-stop" data-tag="reads"><title>raw reads</title><rect x="3" y="54" width="10" height="28" rx="5" class="city-map-term"/></g>
+    <g class="city-map-stop" data-tag="BAMpiro"><title>BAMpiro</title><rect x="44" y="52" width="15" height="32" rx="7.5"/></g>
+    <g class="city-map-stop" data-tag="depot"><title>the depot</title><rect x="45" y="106" width="12" height="9" rx="1.5"/></g>
+    ${stop('pathotypr', 150, 30, 'pathotypr')}${stop('get_MNV', 108, 50, 'get_MNV')}${stop('eskaks', 172, 50, 'eskaks')}
+    ${stop('snpick', 104, 70, 'snpick', true)}${stop('distree', 200, 70, 'distree')}${stop('fstic', 118, 91, 'fstic', true)}
+    ${stop('mycolorsTB', 212, 110, 'mycolorsTB', true)}${stop('karyon', 272, 110, 'karyon', true, true)}
+    <g class="city-map-trains"></g>
+  </svg>`;
+  stage.appendChild(map);
+  map.querySelectorAll('.city-map-stop').forEach(g => {
+    const tag = g.dataset.tag;
+    if (!tags.has(tag)) return;
+    g.addEventListener('mouseenter', () => light(tag));
+    g.addEventListener('mouseleave', () => light(''));
+    g.addEventListener('click', (e) => { e.stopPropagation(); open(tag); });
+  });
+  // a dot for each train, as far along its line on the map as it is in the city
+  const mapLines = {};
+  map.querySelectorAll('.city-map-line').forEach(el => { mapLines[el.dataset.line] = { el, len: el.getTotalLength() }; });
+  const dots = map.querySelector('.city-map-trains');
+  const mapTrains = trains.map(tr => {
+    const line = Object.keys(LINES).find(k => LINES[k] === tr.color);
+    const d = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    d.setAttribute('width', '7'); d.setAttribute('height', '5'); d.setAttribute('rx', '1');
+    d.setAttribute('fill', tr.color);
+    dots.appendChild(d);
+    return { tr, d, line: mapLines[line] };
+  });
+  function placeMapTrains() {
+    mapTrains.forEach(({ tr, d, line }) => {
+      if (!line) return;
+      const p = line.el.getPointAtLength(line.len * tr.s / Math.max(1, tr.path.length - 1));
+      d.setAttribute('x', (p.x - 3.5).toFixed(1)); d.setAttribute('y', (p.y - 2.5).toFixed(1));
+    });
+  }
 
   // ---- day and night ----
   function theme() {
@@ -530,6 +586,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     place();
     renderer.render(scene, camera);
     placeLabels();
+    placeMapTrains();
   }
   window.addEventListener('resize', resize);
   resize(); theme(); place(); move(0, 0);

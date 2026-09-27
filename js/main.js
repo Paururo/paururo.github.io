@@ -213,7 +213,6 @@ function toolTicket(tag) {
     };
   }
   if (tag === 'reads') return { name: 'raw reads', kind: 'the sequencer', desc: 'Where every line starts: short reads, straight off the sequencer, on their way down the cables to BAMpiro.' };
-  if (tag === 'IQ-TREE') return { name: 'IQ-TREE', kind: 'not mine', desc: 'The tree builder the green line runs through: snpick gets the alignments ready for it, and distree measures the trees it grows.', links: [{ label: 'IQ-TREE', href: 'https://iqtree.github.io/' }] };
   if (tag === 'karyon') return { name: 'karyon', kind: 'under works', desc: 'Genomic track plots in Rust, still being built. Come back soon.' };
   if (tag === 'depot') {
     const shown = new Set(FEATURED_TOOLS.map(t => t.name.toLowerCase()).concat('karyon'));
