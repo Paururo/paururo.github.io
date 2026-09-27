@@ -1893,7 +1893,6 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   const v = new THREE.Vector3();
   function placeLabels() {
-    if (compact) { for (const l of tags.values()) l.el.classList.remove('off'); return; }
     for (const l of tags.values()) {
       if (l.el.hidden) continue;
       v.copy(l.pos).project(camera);

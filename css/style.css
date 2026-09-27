@@ -716,8 +716,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label::before { content: ''; width: 10px; height: 4px; border-radius: 2px; margin-bottom: 2px; background: var(--c, transparent); }
 .city-label small { display: none; font-size: 10.5px; font-weight: 400; color: var(--muted); }
 .city-label.lit, .city-label:focus-visible { z-index: 2; background: var(--note); }
-/* closer in, the name of a building out of the frame waits out of sight */
-.city-label.off { visibility: hidden; }
+/* closer in, the name of a building out of the frame waits out of sight; and none shows before the
+   city has put it over its building */
+.city-label.off, .city-label:not([data-x]) { visibility: hidden; }
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
@@ -1307,15 +1308,17 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .print:nth-child(n) { transform: none; }
   .ruler-feature span { display: none; }
   .coco { right: 8px; }
-  /* the buttons in a row under the city, where the map, the board and the coconut leave them alone */
-  .city-stage { aspect-ratio: 100 / 72; margin-bottom: 48px; }
+  /* under the city, in room the page keeps for them from the start (a margin in % is of the width):
+     the buttons in a row, where the board and the coconut leave them alone, and the map at full
+     width, big enough for its names */
+  .city-stage { aspect-ratio: 100 / 72; margin-bottom: calc(63px + 47.95%); }
   .city-turn { top: calc(100% + 8px); left: 0; right: 0; justify-content: center; gap: 5px; }
   .city-turn button { width: 38px; height: 36px; }
   .city-turn .city-bus, .city-turn .city-tram, .city-turn .city-door { width: 42px; }
-  .city-map { width: 132px; padding: 3px 4px 2px; }
-  .city-map text { display: none; }
-  .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
-  .city-label { position: static; transform: none !important; }
+  .city-map { top: calc(100% + 52px); left: 0; right: 0; width: auto; padding: 4px 6px 3px; }
+  /* the names over their buildings, as on a big screen, only smaller */
+  .city-label { font-size: 10px; padding: 1px 5px 2px; border-width: 1px; box-shadow: 1px 1px 0 var(--ink); }
+  .city-label::before { width: 8px; height: 3px; margin-bottom: 1px; }
   .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }
   .city-hint { position: static; margin: 4px 0 0; text-align: center; font-size: 18px; line-height: 1.2; }
   .city-ticket { position: relative; width: 100%; margin-top: 12px; transform: none !important; }
