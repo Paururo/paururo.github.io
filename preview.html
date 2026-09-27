@@ -783,6 +783,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-stop circle, .city-map-stop rect { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
 .city-map-stop .city-map-term { fill: var(--ink); }
 .city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
+/* the trains' dots let a press through to the station under them (a train waits at the end of its line) */
+.city-map-trains { pointer-events: none; }
 .city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
 /* the yellow bus's road on each map, and Sagunt's hill and sea */
 .city-map-bus, .city-map-tram { cursor: pointer; }
