@@ -39,6 +39,34 @@ const tone = (base, ...others) => (x, y, z) => {
   return base;
 };
 
+// A railway route through the middle of the given blocks (units of the scene), each
+// corner turned on an arc of radius R, measured along its length
+function routeOf(pts, R = 2.5) {
+  const c = pts.map(([x, z]) => [x + 0.75, z + 0.75]);
+  const out = [c[0]];
+  for (let i = 1; i < c.length - 1; i++) {
+    const [px, pz] = c[i - 1], [x, z] = c[i], [nx, nz] = c[i + 1];
+    const d1 = [Math.sign(x - px), Math.sign(z - pz)], d2 = [Math.sign(nx - x), Math.sign(nz - z)];
+    const ox = x - d1[0] * R + d2[0] * R, oz = z - d1[1] * R + d2[1] * R;          // the centre of the arc
+    const t0 = Math.atan2(-d2[1], -d2[0]);
+    let dt = Math.atan2(d1[1], d1[0]) - t0;
+    if (dt > Math.PI) dt -= 2 * Math.PI;
+    if (dt < -Math.PI) dt += 2 * Math.PI;
+    for (let k = 0; k <= 16; k++) { const t = t0 + dt * k / 16; out.push([ox + Math.cos(t) * R, oz + Math.sin(t) * R]); }
+  }
+  out.push(c[c.length - 1]);
+  const len = [0];
+  for (let i = 1; i < out.length; i++) len.push(len[i - 1] + Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]));
+  return { pts: out, len, L: len[len.length - 1] };
+}
+// the point `u` along a route; past either end it runs straight on
+function pointOn(r, u) {
+  const n = r.pts.length;
+  const i = u <= 0 ? 1 : u >= r.L ? n - 1 : r.len.findIndex(l => l >= u);
+  const [a, b] = [r.pts[i - 1], r.pts[i]], f = (u - r.len[i - 1]) / (r.len[i] - r.len[i - 1]);
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+}
+
 // ---- the city, block by block ----
 // Two blocks to a unit of the scene, so the board is 148 blocks by 96. A building
 // is filled solid (only the blocks that can be seen become meshes), then carved
@@ -152,55 +180,46 @@ function buildCity(lineages) {
   ground(4, 68, 28, 24, tone(P.pave2, [P.pave3, 0.25]));                                 // the depot yard
   ground(132, 76, 14, 14, tone(P.dirt, [P.dirt2, 0.3], [P.pebble, 0.06]));               // the building site
 
-  // ---- the lines: two rails either side of a stripe in the line's colour, sleeper ends peeping out ----
+  // ---- the lines: two rails either side of a stripe in the line's colour, sleeper ends peeping out,
+  // round the curves as well as along the straights ----
   const ballast = tone(P.ballast, [P.ballast2, 0.35]);
-  function lay(pts, color) {
-    const path = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const [x0, z0] = pts[i], [x1, z1] = pts[i + 1];
-      const steps = Math.max(Math.abs(x1 - x0), Math.abs(z1 - z0));
-      for (let k = 0; k <= steps; k++) {
-        const x = Math.round(x0 + (x1 - x0) * k / steps), z = Math.round(z0 + (z1 - z0) * k / steps), last = path[path.length - 1];
-        if (!last || last[0] !== x || last[1] !== z) path.push([x, z]);
-      }
-    }
-    // the middle of the track, block by block, and which way it runs there
-    const mid = new Map();
-    path.forEach(([x, z], i) => {
-      const [nx, nz] = path[i + 1] || [2 * x - path[i - 1][0], 2 * z - path[i - 1][1]];
-      const along = nx !== x ? 'x' : 'z';
-      mid.set(`${2 * x + 1},${2 * z + 1}`, along);
-      if (path[i + 1]) mid.set(`${2 * x + 1 + nx - x},${2 * z + 1 + nz - z}`, along);
-    });
-    const rails = new Set(), ends = new Set();
-    for (const [k, along] of mid) {
-      const [cx, cz] = k.split(',').map(Number);
-      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) { const r = `${cx + dx},${cz + dz}`; if (!mid.has(r)) rails.add(r); }
-      if ((along === 'x' ? cx : cz) % 2 === 0) for (const s of [-2, 2]) ends.add(along === 'x' ? `${cx},${cz + s}` : `${cx + s},${cz}`);
+  function lay(route, color, from, to) {
+    const mid = new Map(), rails = new Set(), ends = new Set();
+    for (let k = 0; from + k * 0.05 <= to + 1e-6; k++) {
+      const u = from + k * 0.05, [x, z] = pointOn(route, u), [x2, z2] = pointOn(route, u + 0.01);
+      const l = Math.hypot(x2 - x, z2 - z) || 1, tx = (x2 - x) / l, tz = (z2 - z) / l;
+      const cell = (o) => `${Math.floor((x - tz * o) * 2)},${Math.floor((z + tx * o) * 2)}`;   // o across the track
+      mid.set(cell(0), Math.abs(tx) > Math.abs(tz) ? 'x' : 'z');
+      rails.add(cell(0.5)); rails.add(cell(-0.5));
+      if (k % 20 === 0) { ends.add(cell(1)); ends.add(cell(-1)); }
     }
     for (const k of ends) if (!mid.has(k) && !rails.has(k)) { const [x, z] = k.split(',').map(Number); put(x, -1, z, P.sleeper); }
-    for (const k of rails) { const [x, z] = k.split(',').map(Number); put(x, -1, z, ballast); put(x, 0, z, P.steel); }
+    for (const k of rails) if (!mid.has(k)) { const [x, z] = k.split(',').map(Number); put(x, -1, z, ballast); put(x, 0, z, P.steel); }
     for (const [k, along] of mid) {
       const [x, z] = k.split(',').map(Number);
       if (color) { put(x, -1, z, ballast); put(x, 0, z, color); }
       else put(x, -1, z, (along === 'x' ? x : z) % 2 === 0 ? P.sleeper : ballast);
     }
-    return path;
   }
   // a buffer stop just past the end of a line
-  function bumper(path) {
-    const [x, z] = path[path.length - 1], [px, pz] = path[path.length - 2];
-    const dx = Math.sign(x - px), dz = Math.sign(z - pz), cx = 2 * x + 1 + 2 * dx, cz = 2 * z + 1 + 2 * dz;
-    for (let k = -1; k <= 1; k++) { const bx = cx + (dz ? k : 0), bz = cz + (dx ? k : 0); put(bx, 0, bz, P.dark); put(bx, 1, bz, k ? P.red : P.white); }
+  function bumper(route) {
+    const [x, z] = pointOn(route, route.L + 1.25), [x0, z0] = pointOn(route, route.L);
+    const cx = Math.floor(x * 2), cz = Math.floor(z * 2), across = Math.abs(x - x0) > Math.abs(z - z0);
+    for (let k = -1; k <= 1; k++) { const bx = cx + (across ? 0 : k), bz = cz + (across ? k : 0); put(bx, 0, bz, P.dark); put(bx, 1, bz, k ? P.red : P.white); }
   }
-  // the trains stop a block short of the buffers
-  const tracks = {};
-  const line = (name, pts) => { const path = lay(pts, LINES[name]); bumper(path); tracks[name] = path.slice(0, -1); };
-  line('red', [[24, 14], [24, 6], [40, 6]]);
+  // how far a train may go: `lo` for its tail (into the station's arch), `hi` for its nose (up to the buffers)
+  const routes = {};
+  const line = (name, pts, lo = -1) => {
+    const route = routeOf(pts);
+    lay(route, LINES[name], lo < 0 ? -0.75 : 0, route.L + 0.75);
+    bumper(route);
+    routes[name] = { route, lo, hi: route.L + 0.6 };
+  };
+  line('red', [[24, 14], [24, 6], [39, 6]]);
   line('blue', [[33, 19], [70, 19]]);
   line('green', [[33, 25], [66, 25]]);
   line('ochre', [[24, 32], [24, 38], [29, 38]]);
-  line('plum', [[64, 26], [64, 36], [70, 36]]);
+  line('plum', [[64, 26], [64, 36], [70, 36]], 0.6);                                     // it starts at a junction, so it stops short of it
 
   // ---- the sequencer, where the reads come from ----
   const seqr = block(4, 36, 21, 57, 1, 11, tone(P.white, [P.white2, 0.1]), 'reads');
@@ -502,7 +521,7 @@ function buildCity(lineages) {
   }
   windows(shed, ['E', 'W', 'N'], 4, 2, 3, 4);
   pitched(shed, 10, 'x', (x, y) => (y % 2 ? P.roof : P.roof2), brick);
-  lay([[2, 43], [15, 43]], null);
+  lay(routeOf([[2, 43], [15, 43]]), null, 0, 13);
   [[7, P.steel], [15, '#A08C7A'], [23, '#8FA3B0']].forEach(([x0, c]) => {                // the old wagons
     for (const x of [x0, x0 + 4]) for (const z of [86, 88]) put(x, 1, z, P.black, 'depot');
     fill(x0, 2, 86, 5, 1, 3, P.dark, 'depot');
@@ -564,7 +583,7 @@ function buildCity(lineages) {
   }
   // where a label goes when the middle of the top of its blocks is not the place (the crane would lift it too high)
   const pins = { karyon: [139, 14, 83] };
-  return { list, S, W: W / S, D: D / S, tracks, lighthouse, pins };
+  return { list, S, W: W / S, D: D / S, routes, lighthouse, pins };
 }
 
 // ---- turning blocks into meshes ----
@@ -636,27 +655,23 @@ function boxesOf(list, material) {
   mesh.castShadow = true; mesh.receiveShadow = true;
   return mesh;
 }
-// three cars: the line's colour with a pale stripe, windows and doors, bogies under them; lamps and a windscreen at the front
-function trainOf(color) {
-  const body = [], lit = [], dark = '#30343A', roof = '#EDEBE4', door = shade(color, 0.8);
-  for (let i = 0; i < 3; i++) {
-    const x = -i * 3;
-    body.push(
-      [2.2, 0.3, 0.95, x, 0.68, 0, dark],
-      [2.7, 1.1, 1.3, x, 1.38, 0, color],
-      [2.72, 0.12, 1.32, x, 1.08, 0, '#F6F3EA'],
-      [2.6, 0.2, 1.16, x, 2.03, 0, roof],
-      [0.36, 0.86, 1.34, x, 1.36, 0, door],
-    );
-    [-0.95, -0.5, 0.5, 0.95].forEach(dx => lit.push([0.32, 0.36, 1.34, x + dx, 1.56, 0, '#E8FFF0']));
-    if (i < 2) body.push([0.5, 0.18, 0.3, x - 1.5, 0.95, 0, dark]);
+// One car of a train, 2.7 long, on two bogies 1.8 apart: the line's colour with a pale stripe,
+// windows and a door; a windscreen and lamps at an end that can lead, a coupling at an end that cannot
+const CAR = 3, BOGIE = 0.9;
+function carOf(color, front, back, body, lit) {
+  const dark = '#30343A', solid = [
+    [0.5, 0.3, 0.95, BOGIE, 0.68, 0, dark], [0.5, 0.3, 0.95, -BOGIE, 0.68, 0, dark], [2.5, 0.12, 1.1, 0, 0.86, 0, dark],
+    [2.7, 1.1, 1.3, 0, 1.38, 0, color], [2.72, 0.12, 1.32, 0, 1.08, 0, '#F6F3EA'], [2.6, 0.2, 1.16, 0, 2.03, 0, '#EDEBE4'],
+    [0.36, 0.86, 1.34, 0, 1.36, 0, shade(color, 0.8)],
+  ];
+  const glass = [-0.95, -0.5, 0.5, 0.95].map(dx => [0.32, 0.36, 1.34, dx, 1.56, 0, '#E8FFF0']);
+  for (const [cab, s] of [[front, 1], [back, -1]]) {
+    if (cab) glass.push([0.06, 0.42, 1.0, s * 1.36, 1.62, 0, '#CFE8F2'], [0.06, 0.12, 0.22, s * 1.37, 1.2, 0.38, '#FFF6C8'], [0.06, 0.12, 0.22, s * 1.37, 1.2, -0.38, '#FFF6C8']);
+    else solid.push([0.2, 0.18, 0.3, s * 1.45, 0.95, 0, dark]);
   }
-  body.push([0.8, 0.14, 0.6, 0.1, 2.2, 0, '#9AA1A8']);
-  lit.push([0.06, 0.42, 1.0, 1.36, 1.62, 0, '#CFE8F2'], [0.06, 0.12, 0.22, 1.37, 1.2, 0.38, '#FFF6C8'], [0.06, 0.12, 0.22, 1.37, 1.2, -0.38, '#FFF6C8']);
+  if (front) solid.push([0.8, 0.14, 0.6, 0.3, 2.2, 0, '#9AA1A8']);
   const g = new THREE.Group();
-  const win = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x000000 });
-  g.add(boxesOf(body, new THREE.MeshLambertMaterial({ vertexColors: true })), boxesOf(lit, win));
-  g.userData.win = win;
+  g.add(boxesOf(solid, body), boxesOf(glass, lit));
   return g;
 }
 
@@ -675,10 +690,15 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   scene.add(hemi, sun);
 
   // trains, one per line, there and back
-  const trains = Object.entries(city.tracks).map(([line, path], i) => {
-    const t = trainOf(LINES[line]);
-    scene.add(t);
-    return { t, path, color: LINES[line], s: (i * 7) % path.length, dir: 1, speed: 0.06 + 0.012 * i };
+  // trains, one per line, there and back: each car rides its two bogies along the rails, so it
+  // turns into a curve bit by bit; a train slows into each end, waits, and goes back the way it
+  // came with a cab at either end. The short lines have shorter, slower trains.
+  const carBody = new THREE.MeshLambertMaterial({ vertexColors: true }), carLit = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x000000 });
+  const RUN = { red: [3, 0.07], blue: [3, 0.08], green: [3, 0.075], ochre: [2, 0.045], plum: [2, 0.05] };
+  const trains = Object.entries(city.routes).map(([line, { route, lo, hi }], i) => {
+    const [n, speed] = RUN[line] || [3, 0.07], length = n * CAR - 0.3;
+    const cars = Array.from({ length: n }, (_, k) => { const c = carOf(LINES[line], k === 0, k === n - 1, carBody, carLit); scene.add(c); return c; });
+    return { line, cars, route, lo, hi, length, far: hi - lo - length, head: lo + length + (i * 7) % Math.max(1, hi - lo - length), dir: 1, speed, wait: 0 };
   });
   // the reads, running down the cables from the sequencer to the station
   const reads = [];
@@ -931,17 +951,16 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   map.querySelectorAll('.city-map-line').forEach(el => { mapLines[el.dataset.line] = { el, len: el.getTotalLength() }; });
   const dots = map.querySelector('.city-map-trains');
   const mapTrains = trains.map(tr => {
-    const line = Object.keys(LINES).find(k => LINES[k] === tr.color);
     const d = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     d.setAttribute('width', '7'); d.setAttribute('height', '5'); d.setAttribute('rx', '1');
-    d.setAttribute('fill', tr.color);
+    d.setAttribute('fill', LINES[tr.line]);
     dots.appendChild(d);
-    return { tr, d, line: mapLines[line] };
+    return { tr, d, line: mapLines[tr.line] };
   });
   function placeMapTrains() {
     mapTrains.forEach(({ tr, d, line }) => {
       if (!line) return;
-      const p = line.el.getPointAtLength(line.len * tr.s / Math.max(1, tr.path.length - 1));
+      const p = line.el.getPointAtLength(line.len * Math.max(0, Math.min(1, (tr.head - tr.length / 2) / tr.route.L)));
       d.setAttribute('x', (p.x - 3.5).toFixed(1)); d.setAttribute('y', (p.y - 2.5).toFixed(1));
     });
   }
@@ -954,7 +973,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     sun.color.set(night ? '#8FA0FF' : '#ffffff');
     glowMesh.material.emissive.set(night ? '#FFC96B' : '#000000');
     glowMesh.material.emissiveIntensity = night ? 0.9 : 0;
-    trains.forEach(tr => tr.t.userData.win.emissive.set(night ? '#FFE9A8' : '#000000'));
+    carLit.emissive.set(night ? '#FFE9A8' : '#000000');
     reads.forEach(r => { r.m.material.emissiveIntensity = night ? 0.8 : 0; });
     beam.visible = night;
     dirty = true;
@@ -968,14 +987,19 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function move(dt, k) {
     t += dt * k;
     trains.forEach(tr => {
-      tr.s += tr.dir * tr.speed * dt * k;
-      if (tr.s >= tr.path.length - 1) { tr.s = tr.path.length - 1; tr.dir = -1; }
-      if (tr.s <= 0) { tr.s = 0; tr.dir = 1; }
-      const i = Math.floor(tr.s), f = tr.s - i;
-      const a = tr.path[i], b = tr.path[Math.min(i + 1, tr.path.length - 1)];
-      tr.t.position.copy(O(a[0] + (b[0] - a[0]) * f + 0.75, 0, a[1] + (b[1] - a[1]) * f + 0.75));
-      const ahead = tr.path[Math.min(i + 1, tr.path.length - 1)], behind = tr.path[Math.max(i - 1, 0)];
-      tr.t.rotation.y = Math.atan2(-(ahead[1] - behind[1]), ahead[0] - behind[0]) + (tr.dir < 0 ? Math.PI : 0);
+      if (tr.wait > 0) tr.wait -= dt * k;
+      else {
+        const left = tr.dir > 0 ? tr.hi - tr.head : tr.head - tr.length - tr.lo;
+        tr.head += tr.dir * tr.speed * dt * k * Math.max(0.2, Math.min(1, left / 2, (tr.far - left) / 2 + 0.2));
+        if (tr.head >= tr.hi) { tr.head = tr.hi; tr.dir = -1; tr.wait = 70; }
+        if (tr.head - tr.length <= tr.lo) { tr.head = tr.lo + tr.length; tr.dir = 1; tr.wait = 70; }
+      }
+      tr.cars.forEach((car, j) => {
+        const c = tr.head - 1.35 - j * CAR;
+        const [fx, fz] = pointOn(tr.route, c + BOGIE), [bx, bz] = pointOn(tr.route, c - BOGIE);
+        car.position.copy(O((fx + bx) / 2, 0, (fz + bz) / 2));
+        car.rotation.y = Math.atan2(-(fz - bz), fx - bx);
+      });
     });
     reads.forEach(r => { const s = (r.s + t * 0.05) % 5; at(11.5 + s, 0.73, r.z, r.m); r.m.visible = s < 4.6; });
     smoke.forEach(p => {
