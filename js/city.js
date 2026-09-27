@@ -946,9 +946,12 @@ function buildSagunto(lineages) {
 // and as the ground falls away it goes on level, held up on pillars (it is built on a grid of its
 // own, buildI2, turned and set down here).
 const TOP = 8;                                                              // the plateau's top block
-const I2 = { cx: 60, cz: 40, turn: 0.5, sign: [37, 57] };                   // where the institute stands, and its sign
+const I2 = { cx: 60, cz: 40, turn: 0.5, sign: [67, 55] };                   // where the institute stands, and its sign in front of it, on the slope
 function siteH(x, z) {
   if (z > 81) return -1;                                                    // the street along the south
+  // a level patch in the slope for the sign, along the building's front
+  const [sx, sz] = I2.sign, [c, s] = [Math.cos(I2.turn), Math.sin(I2.turn)], dx = x + 0.5 - sx, dz = z + 0.5 - sz;
+  if (Math.abs(dx * c - dz * s) <= 9 && Math.abs(dx * s + dz * c) <= 2.5) return 4;
   if (x <= 58) return TOP;                                                  // the plateau
   if (x <= 60) return TOP - 3;                                              // a step down, under the railing
   return Math.max(-1, Math.round(TOP - 3 - 6 * (x - 61) / 45));            // the lawn, down to the street's level
@@ -1003,9 +1006,9 @@ function buildPaterna() {
     fill(x, s + 2, z + 1, 4, 1, 2, P.plank, 'xarxa');
     for (const dx of [0, 3]) fill(x + dx, s + 1, z + 1, 1, 1, 2, P.dark, 'xarxa');
   };
-  table(70, 52); table(88, 70); table(96, 56);
+  table(90, 46); table(88, 70); table(96, 56);
   const sapling = (x, z) => { const s = siteH(x, z); fill(x, s + 1, z, 1, 5, 1, P.trunk); fill(x + 1, s + 1, z, 1, 3, 1, P.plank); clump(x + 0.5, s + 6.5, z + 0.5, 1.5, 1.3, 1.5, tone(P.leaf3, [P.leaf, 0.4]), '', 0.9); };
-  for (const [x, z] of [[66, 58], [80, 50], [92, 66], [102, 70], [74, 70], [104, 50], [86, 40]]) sapling(x, z);
+  for (const [x, z] of [[80, 54], [92, 66], [102, 70], [74, 70], [104, 50], [100, 40]]) sapling(x, z);
   for (let z = 30; z <= 74; z += 4) { const s = siteH(110, z); fill(110, s + 1, z, 2, 11 + (z % 3), 2, tone(P.pine2, [P.pine, 0.4])); put(110, s + 12 + (z % 3), z, P.pine2); }
 
   // ---- the street below: a pavement, and palms on a small square to the east ----
@@ -1028,13 +1031,13 @@ function buildPaterna() {
 
   // ---- people ----
   const person = (x, z, shirt, hair = P.hair) => { const s = siteH(x, z); put(x, s + 1, z, P.dark); put(x, s + 2, z, shirt); put(x, s + 3, z, P.skin); if (hair) put(x, s + 4, z, hair); };
-  [[72, 55, P.blue], [74, 55, P.red, '#D9A441'], [90, 73, P.green], [44, 68, P.plum], [30, 76, P.ochre], [84, 86, P.white, null], [90, 90, P.stone], [100, 78, P.red]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
+  [[92, 50, P.blue], [94, 50, P.red, '#D9A441'], [90, 73, P.green], [44, 68, P.plum], [30, 76, P.ochre], [84, 86, P.white, null], [90, 90, P.stone], [100, 78, P.red]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
 
-  return b.finish({ pins: { xarxa: [88, 12, 64] } });
+  return b.finish({ pins: { xarxa: [98, 12, 58] } });
 }
 
 // the institute on a grid of its own, 64 blocks by 40: four bays of a concrete grid filled with white
-// louvers over a band of glass, six floors from its door; the tower at its west end, cream, taller,
+// louvers over a band of glass, five floors from its door; the tower at its west end, cream, taller,
 // with the strip of glass over the door and the perforated canopy; an open frame on the roof; and,
 // where the ground (ground(x, z) gives its top block) falls away beneath it, pillars down to it
 function buildI2(ground) {
@@ -1042,7 +1045,7 @@ function buildI2(ground) {
   const { put, fill, block, side, span, paint, recess, flat } = b;
   const concrete = tone('#C9C0AE', ['#BEB5A2', 0.3], ['#D2CABA', 0.1]);
   const cream = tone('#E5DBC7', ['#DBD0BA', 0.3]);
-  const base = TOP + 1, F = 5, top = base + 6 * F;
+  const base = TOP + 1, F = 5, top = base + 5 * F;
   const main = block(16, 10, 55, 29, base, top, concrete, 'i2sysbio');
   const louver = (y) => (y % 2 ? '#FBFBF8' : '#D3D5D2');
   const facade = (f) => {
@@ -1375,7 +1378,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   bus.userData.vehicle = 'bus';
   scene.add(bus, ...tram);
   const signArt = signCanvas(), sign = signOf(signArt);
-  sign.position.copy(O(PAT + I2.sign[0] / 2, (TOP + 1) / 2 + 1.35, I2.sign[1] / 2)); sign.rotation.set(-0.3, I2.turn, 0, 'YXZ'); scene.add(sign);
+  sign.position.copy(O(PAT + I2.sign[0] / 2, (siteH(...I2.sign) + 1) / 2 + 1.35, I2.sign[1] / 2)); sign.rotation.set(-0.3, I2.turn, 0, 'YXZ'); scene.add(sign);
   // the ways: the bus to Sagunt past the roundabout at its port and back past the one by the
   // market; the tram, with a cab at each end, straight there and back
   const TRIPS = {
