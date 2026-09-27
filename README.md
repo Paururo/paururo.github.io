@@ -15,7 +15,7 @@ Plain HTML, CSS and JavaScript: no build step, no framework.
 | `js/polar.js` | Polar, the lovebird: my shoulder in the photo, real perches, the desk, the ruler with the plush bacillus, his coconut in the top right corner and the half coconut on the desk |
 | `assets/img/polar.png` | Polar's poses, generated (see below) |
 | `assets/img/coco.png`, `assets/img/coco-half.png` | His two coconuts, generated (see below) |
-| `js/city.js` | The tools as a voxel city: a station for BAMpiro, a railway line and a building for each tool, a ticket for each building, and a map of the lines in a corner with the trains on it. Built of small blocks, two to a unit, so there is room for windows, clocks, rails and people; only the blocks that can be seen are drawn. It turns round and tilts, from nearly the ground to straight above. Drawn with three.js (from jsDelivr), loaded only when the section comes near and where WebGL works; otherwise the cards show as before |
+| `js/city.js` | The tools as a voxel city: a station for BAMpiro, a railway line and a building for each tool, a ticket for each building, and a map of the lines in a corner with the trains on it. Built of small blocks, two to a unit, so there is room for windows, clocks, rails and people; only the blocks that can be seen are drawn. Past a bridge to the east lie Sagunt and its port (the castle on its hill, the Roman theatre, orange groves, the blast furnace, the harbour, the beach), with a building for each paper I led; the yellow bus takes you there and back. It turns round and tilts, from nearly the ground to straight above. Drawn with three.js (from jsDelivr), loaded only when the section comes near and where WebGL works; otherwise the cards show as before |
 | `js/main.js` | Behaviour and live data, the publications as a departures board |
 | `i2sysbio-networks.html` | The I2SysBio researchers map (standalone) |
 | `preview.html` | Single-file copy of the page, generated |
@@ -24,7 +24,7 @@ Plain HTML, CSS and JavaScript: no build step, no framework.
 
 Open `js/content.js` and add one object to the matching list:
 
-- **A paper I led**: `SELECTED_WORK`. It also marks the paper as first or co-first author in the live list.
+- **A paper I led**: `SELECTED_WORK`. It also marks the paper as first or co-first author in the live list. Its building in Sagunt needs a stop in `SAGUNTO_STOPS` and a few blocks in `buildSagunto` in `js/city.js`.
 - **A news post**: `BLOG_POSTS` (newest first).
 - **A tool**: `FEATURED_TOOLS`. Only public repositories; add `bioconda: '<package>'` to show its live download count. Its ticket in the tool city is built from this entry; a new building needs a stop in `CITY_STOPS` and a few blocks in `buildCity` in `js/city.js`.
 - **A career step**: `CAREER`. `end: null` means "until now".

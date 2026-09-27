@@ -512,6 +512,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 }
 .more-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; font-family: var(--font-hand); font-weight: 700; font-size: 25px; color: var(--terra-ink); }
 .more-link i { font-size: 15px; }
+.led-papers .more-link { display: flex; width: fit-content; }
+.led-papers .more-link + .more-link { margin-top: 4px; }
 
 /* ==================== BACKGROUND ==================== */
 .chromosome-wrap { overflow-x: auto; margin: 0 -10px; padding: 6px 10px 2px; scrollbar-width: thin; }
@@ -749,6 +751,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
+.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); }
 .city-ticket {
   position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
   background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
@@ -759,6 +762,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-ticket-name b { font-size: 16px; }
 .city-ticket-name span { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 11.5px; color: var(--ochre-ink); }
 .city-ticket-meta { color: var(--muted); font-size: 12px; margin: 1px 0 5px !important; }
+.city-ticket-title { font-weight: 600; margin-bottom: 4px !important; }
 .city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
 .city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
 .city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
@@ -776,7 +780,18 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-stop .city-map-term { fill: var(--ink); }
 .city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
 .city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
+/* the yellow bus's road on each map, and Sagunt's hill and sea */
+.city-map-bus { cursor: pointer; }
+.city-map-bus path { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.city-map-bus rect { fill: #F4C430; stroke: var(--ink); stroke-width: 2; }
+.city-map-bus:hover rect { fill: #FFD95A; }
+.city-map-bus text { fill: #26292D; }
+.city-map .city-map-town { font: italic 400 10px var(--font-body); fill: var(--muted); }
+.city-map-hill { fill: color-mix(in srgb, #C9B98A 45%, var(--card)); }
+.city-map-sea { fill: color-mix(in srgb, #4F9CC8 35%, var(--card)); }
 .city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.city-turn .city-bus { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
+.city-turn .city-bus svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
 .city-on .city-list-toggle { display: table; }
@@ -1565,6 +1580,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <h3 class="sub-head">Papers I led <span class="sub-note">first or co-first author</span></h3>
           <ol class="notebook" id="selectedList"></ol>
           <a class="more-link" href="#publications">all publications, live from ORCID <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+          <a class="more-link" href="#tools" id="toSagunt" hidden>the same papers in Sagunt, by the yellow bus <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
         </div>
       </div>
     </section>
@@ -1674,9 +1690,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
-        <div class="city" id="toolCity" data-src="js/city.js?v=19b31b9e44" hidden>
+        <div class="city" id="toolCity" data-src="js/city.js?v=fb481473dc" hidden>
           <div class="city-stage"></div>
-          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn and tilt the city</p>
+          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn and tilt &middot; the yellow bus goes to Sagunt</p>
           <div class="city-chips" id="cityChips"></div>
         </div>
         <button type="button" class="px-btn city-list-toggle" id="toolListToggle" aria-expanded="false" aria-controls="toolList">all tools and repositories, as a list</button>
@@ -2092,6 +2108,16 @@ const CITY_STOPS = [
   { tag: 'mycolorsTB', name: 'mycolorsTB', line: 'plum', sub: 'lineage colours' },
   { tag: 'karyon', name: 'karyon', line: 'works', sub: 'under works' },
   { tag: 'depot', name: 'the depot', line: 'depot', sub: 'older and smaller' },
+];
+// Sagunt and its port, past the bridge in the same city: a building for each
+// paper I led. The tag is the building; doi, its paper in SELECTED_WORK; line,
+// the colour of its label (TB or SARS-CoV-2); sub, what it found.
+const SAGUNTO_STOPS = [
+  { tag: 'castell', doi: '10.64898/2026.03.24.714002', name: 'Pathotypr, 2026', line: 'tb', sub: 'the castle keeps watch' },
+  { tag: 'masia', doi: '10.1099/mgen.0.001826', name: 'Host compatibility, 2026', line: 'tb', sub: 'people and cattle' },
+  { tag: 'hospital', doi: '10.64898/2026.03.31.26346553', name: 'Wastewater, 2026', line: 'cov', sub: 'KP.3, three months early' },
+  { tag: 'alt-forn', doi: '10.1371/journal.ppat.1010631', name: 'PLOS Pathogens, 2022', line: 'cov', sub: 'A222V opens the spike' },
+  { tag: 'platja', doi: '10.1128/mBio.02315-21', name: 'mBio, 2021', line: 'cov', sub: 'mutations that kept coming back' },
 ];
 
 const MYCOLORS_TB = {
@@ -5347,7 +5373,7 @@ const PAGE_PARTS = [
   'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup',
   'initCoconut', 'initPolar', 'initHelices', 'initGenomeRuler', 'scatterBugs',
   'initStatBubbles', 'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
-  'initToolCity', 'fetchToolDownloads',
+  'initToolCity', 'initBusLink', 'fetchToolDownloads',
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -5479,7 +5505,26 @@ const CITY_LINES = {
   fstic: 'yellow line', mycolorsTB: 'purple line', BAMpiro: 'where every line meets',
 };
 // what a building's ticket says, with today's numbers
+// a paper's citations, from its row on the departures board once they have come in
+function citationsOf(doi) {
+  const badge = [...document.querySelectorAll('.citation-badge[data-doi]')].find(b => b.dataset.doi.toLowerCase() === doi.toLowerCase());
+  const n = badge ? parseInt(badge.textContent, 10) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
 function toolTicket(tag) {
+  // a paper I led, in Sagunt
+  const place = SAGUNTO_STOPS.find(s => s.tag === tag);
+  const work = place && SELECTED_WORK.find(w => w.doi === place.doi);
+  if (work) {
+    const plain = (html) => html.replace(/<[^>]+>/g, '');
+    const cites = citationsOf(work.doi);
+    return {
+      name: place.name, kind: work.role,
+      meta: [plain(work.venue), cites !== null && `${cites} citation${cites === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
+      title: plain(work.title), desc: plain(work.summary),
+      links: [{ label: work.preprint ? 'preprint' : 'paper', href: `https://doi.org/${work.doi}` }, ...(work.links || []).map(l => ({ label: l.label.toLowerCase(), href: l.url }))],
+    };
+  }
   const tool = FEATURED_TOOLS.find(t => t.name === tag);
   if (tool) {
     const dl = tool.bioconda && toolDownloads[tool.bioconda];
@@ -5514,7 +5559,9 @@ function initToolCity() {
   const probe = document.createElement('canvas');
   if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
   // the city takes its room now, so nothing below it moves when it arrives
-  chips.innerHTML = CITY_STOPS.map(s => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`).join('');
+  // (Sagunt's names wait hidden: the city starts at the tools, and on a phone nothing may move when it arrives)
+  const chip = (s, far) => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"${far ? ' hidden' : ''}><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`;
+  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.map(s => chip(s, true)).join('');
   box.hidden = false;
   section.classList.add('city-on');
   toggle.addEventListener('click', () => {
@@ -5534,6 +5581,24 @@ function initToolCity() {
     if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); }
   }, { rootMargin: '900px 0px' });
   io.observe(section);
+}
+
+// the papers I led, as a link to them in the city: down to it, and on the bus to Sagunt
+function initBusLink() {
+  const link = document.getElementById('toSagunt'), box = document.getElementById('toolCity');
+  if (!link || !box || box.hidden) return;                   // no city here: the list above is all there is
+  link.hidden = false;
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    box.scrollIntoView({ behavior: PREFERS_REDUCED_MOTION ? 'auto' : 'smooth', block: 'center' });
+    let tries = 0;
+    const go = () => {
+      if (box.hidden) return;                                 // the city did not start after all
+      if (!box.city) { if (++tries < 60) setTimeout(go, 200); return; }
+      if (box.city.view.city !== 'sagunto') setTimeout(() => box.city.ride(), 450);
+    };
+    go();
+  });
 }
 
 // ==================== EXPANDABLE HELIX CARDS ====================
