@@ -1414,7 +1414,7 @@ function renderTopicTree() {
 
   holder.innerHTML = `<svg viewBox="-40 0 ${W + 80} ${H}" role="img" aria-labelledby="fanTitle fanDesc">
     <title id="fanTitle">The Mycobacterium tuberculosis complex, drawn as a half-circle phylogeny</title>
-    <desc id="fanDesc">Fourteen lineages, L1 to L10 and the animal-adapted A1 to A4, in the reference topology and lineage colours of mycolorsTB. L8 branches first; then M. tuberculosis (L1, L7, L4, L2 and L3) splits from M. africanum and the animal-adapted lineages (L5, A2, A3, A4, A1, L10, L6 and L9).</desc>
+    <desc id="fanDesc">Fourteen lineages, L1 to L10 and the animal-associated A1 to A4, in the reference topology and lineage colours of mycolorsTB. L8 branches first; then M. tuberculosis (L1, L7, L4, L2 and L3) splits from M. africanum and the animal-associated lineages (L5, A2, A3, A4, A1, L10, L6 and L9).</desc>
     <path class="fan-sweep" d="M ${cx} ${cy} L ${f(pt(R.tip + 22, 6)[0])} ${f(pt(R.tip + 22, 6)[1])} A ${R.tip + 22} ${R.tip + 22} 0 0 1 ${f(pt(R.tip + 22, -6)[0])} ${f(pt(R.tip + 22, -6)[1])} Z"/>
     <g class="fan-body">
       <g class="fan-branches" filter="url(#rough)">${branches.join('')}</g>

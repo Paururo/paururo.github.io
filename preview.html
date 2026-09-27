@@ -1476,7 +1476,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
         <div class="hero-text">
           <p class="hello">hi, I'm</p>
           <h1 class="hero-name">Paula <span class="nowrap">Ruiz-Rodriguez</span></h1>
-          <p class="hero-lede">I'm a bioinformatician who reads genomes to understand how <mark class="hl hl--terra"><em>tuberculosis</em></mark> and <mark class="hl hl--sage">SARS-CoV-2</mark> evolve, spread and adapt to their hosts. I also build <mark class="hl hl--ochre">open-source tools</mark>, and I draw.</p>
+          <p class="hero-lede">I'm a bioinformatician who reads genomes to understand how <mark class="hl hl--terra"><em>tuberculosis</em></mark> and <mark class="hl hl--sage">SARS-CoV-2</mark> evolve, spread and associate with their hosts. I also build <mark class="hl hl--ochre">open-source tools</mark>, and I draw.</p>
           <p class="hero-affil">PhD candidate at the <strong>PathoGenOmics Lab</strong>, I2SysBio (CSIC and University of Valencia), in Valencia, Spain.</p>
           <p class="hero-now"><span class="px-tag">now</span><span>Writing up my PhD thesis, <em>Evolutionary genomics of pathogen diversity in Mycobacterium tuberculosis and SARS-CoV-2</em>.</span></p>
           <div class="hero-cta">
@@ -1518,7 +1518,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
         <ul class="genes" aria-label="Research topics">
           <li><a class="gene" href="#research-tb" style="--c:var(--terra)">TB lineages</a></li>
           <li><a class="gene" href="#research-tb" style="--c:var(--terra-soft)">drug resistance</a></li>
-          <li><a class="gene" href="#research-tb" style="--c:var(--terra)">host adaptation</a></li>
+          <li><a class="gene" href="#research-tb" style="--c:var(--terra)">host association</a></li>
           <li><a class="gene" href="#research-cov" style="--c:var(--sage)">spike evolution</a></li>
           <li><a class="gene" href="#research-cov" style="--c:var(--sage-soft)">wastewater</a></li>
           <li><a class="gene" href="#tools" style="--c:var(--blue)">rust tools</a></li>
@@ -1722,7 +1722,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
-        <div class="city" id="toolCity" data-src="js/city.js?v=52894e852b" hidden>
+        <div class="city" id="toolCity" data-src="js/city.js?v=b037877413" hidden>
           <div class="city-stage"></div>
           <p class="city-hint">press a building for its ticket &middot; drag to turn and tilt, pinch or + &minus; to zoom &middot; the yellow bus goes to Sagunt, the tram to Paterna and my lab</p>
           <div class="city-chips" id="cityChips"></div>
@@ -2031,7 +2031,7 @@ const BLOG_POSTS = [
     date: '2026-09-23',
     category: 'Paper',
     title: 'Host-strain compatibility in tuberculosis, now in Microbial Genomics',
-    body: 'Different <em>M. tuberculosis</em> complex lineages favour different hosts, but the molecular basis of that preference is hard to study in vivo. With Marta Caballer-Gual, co-first author, we infected human and bovine macrophages with human- and animal-adapted strains. In each model the best-matched strain reached the higher bacterial load, and the host transcriptome leaned towards replication, repair and the cell cycle; mismatched pairings showed lower loads and stronger endosomal, antigen-presentation and immune signalling. We also followed phospholipase C: blocking it lowered bacterial burden and cell death in human macrophages but not in bovine ones.',
+    body: 'Different <em>M. tuberculosis</em> complex lineages favour different hosts, but the molecular basis of that preference is hard to study in vivo. With Marta Caballer-Gual, co-first author, we infected human and bovine macrophages with human- and animal-associated strains. In each model the best-matched strain reached the higher bacterial load, and the host transcriptome leaned towards replication, repair and the cell cycle; mismatched pairings showed lower loads and stronger endosomal, antigen-presentation and immune signalling. We also followed phospholipase C: blocking it lowered bacterial burden and cell death in human macrophages but not in bovine ones.',
     links: [
       { url: 'https://doi.org/10.1099/mgen.0.001826', label: 'Read the paper', icon: 'fas fa-file-alt' },
     ],
@@ -2169,7 +2169,7 @@ const MYCOLORS_TB = {
 const LINEAGE_NAMES = {
   L1: 'L1, Indo-Oceanic', L2: 'L2, East Asian', L3: 'L3, East African-Indian', L4: 'L4, Euro-American',
   L5: 'L5, West African 1', L6: 'L6, West African 2', L7: 'L7, Ethiopian', L8: 'L8, the earliest branch', L9: 'L9, the lineage our 2021 paper described',
-  L10: 'L10', A1: 'A1, animal-adapted', A2: 'A2, animal-adapted', A3: 'A3, animal-adapted', A4: 'A4, animal-adapted',
+  L10: 'L10', A1: 'A1, animal-associated', A2: 'A2, animal-associated', A3: 'A3, animal-associated', A4: 'A4, animal-associated',
 };
 
 // ---------- The tuberculosis complex, drawn as a half-circle phylogeny ----------
@@ -3595,7 +3595,7 @@ function renderTopicTree() {
 
   holder.innerHTML = `<svg viewBox="-40 0 ${W + 80} ${H}" role="img" aria-labelledby="fanTitle fanDesc">
     <title id="fanTitle">The Mycobacterium tuberculosis complex, drawn as a half-circle phylogeny</title>
-    <desc id="fanDesc">Fourteen lineages, L1 to L10 and the animal-adapted A1 to A4, in the reference topology and lineage colours of mycolorsTB. L8 branches first; then M. tuberculosis (L1, L7, L4, L2 and L3) splits from M. africanum and the animal-adapted lineages (L5, A2, A3, A4, A1, L10, L6 and L9).</desc>
+    <desc id="fanDesc">Fourteen lineages, L1 to L10 and the animal-associated A1 to A4, in the reference topology and lineage colours of mycolorsTB. L8 branches first; then M. tuberculosis (L1, L7, L4, L2 and L3) splits from M. africanum and the animal-associated lineages (L5, A2, A3, A4, A1, L10, L6 and L9).</desc>
     <path class="fan-sweep" d="M ${cx} ${cy} L ${f(pt(R.tip + 22, 6)[0])} ${f(pt(R.tip + 22, 6)[1])} A ${R.tip + 22} ${R.tip + 22} 0 0 1 ${f(pt(R.tip + 22, -6)[0])} ${f(pt(R.tip + 22, -6)[1])} Z"/>
     <g class="fan-body">
       <g class="fan-branches" filter="url(#rough)">${branches.join('')}</g>
