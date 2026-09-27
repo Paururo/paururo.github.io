@@ -744,7 +744,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-stop .city-map-term { fill: var(--ink); }
 .city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
 .city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
-.city-turn button { width: 32px; height: 30px; font-size: 17px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
 .city-on .city-list-toggle { display: table; }

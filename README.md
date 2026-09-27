@@ -15,7 +15,7 @@ Plain HTML, CSS and JavaScript: no build step, no framework.
 | `js/polar.js` | Polar, the lovebird: my shoulder in the photo, real perches, the desk, the ruler with the plush bacillus, his coconut in the top right corner and the half coconut on the desk |
 | `assets/img/polar.png` | Polar's poses, generated (see below) |
 | `assets/img/coco.png`, `assets/img/coco-half.png` | His two coconuts, generated (see below) |
-| `js/city.js` | The tools as a voxel city: a station for BAMpiro, a railway line and a building for each tool, a ticket for each building, and a map of the lines in a corner with the trains on it. Drawn with three.js (from jsDelivr), loaded only when the section comes near and where WebGL works; otherwise the cards show as before |
+| `js/city.js` | The tools as a voxel city: a station for BAMpiro, a railway line and a building for each tool, a ticket for each building, and a map of the lines in a corner with the trains on it. It turns round and tilts, from nearly the ground to straight above. Drawn with three.js (from jsDelivr), loaded only when the section comes near and where WebGL works; otherwise the cards show as before |
 | `js/main.js` | Behaviour and live data, the publications as a departures board |
 | `i2sysbio-networks.html` | The I2SysBio researchers map (standalone) |
 | `preview.html` | Single-file copy of the page, generated |

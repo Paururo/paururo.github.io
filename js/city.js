@@ -4,7 +4,7 @@
 // question, with a building for the tool that answers it. Drawn in 3D and
 // shown at a low resolution, so every block is a crisp pixel. Point at a
 // building to light it up, press it for its ticket; drag, or use the arrows,
-// to turn the city round.
+// to turn the city round and to look at it from higher up or lower down.
 // ============================================================
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js';
 
@@ -324,7 +324,11 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
 
   // ---- the view ----
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
-  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null };
+  // how it is seen: turned round (yaw) and from how high (pitch), from nearly
+  // the ground to straight above
+  const PITCH = [0.1, 1.54];
+  const tilted = (p) => Math.max(PITCH[0], Math.min(PITCH[1], p));
+  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null };
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
@@ -345,13 +349,20 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     const pix = phone ? 2 : 3;                         // CSS pixels per rendered pixel
     cssW = stage.clientWidth; cssH = stage.clientHeight;
     renderer.setSize(Math.max(1, Math.round(cssW / pix)), Math.max(1, Math.round(cssH / pix)), false);
-    // the whole board fits at every turn: its diagonal across the width
-    const halfW = phone ? 43 : 42, aspect = cssW / cssH;
-    camera.left = -halfW; camera.right = halfW; camera.top = halfW / aspect; camera.bottom = -halfW / aspect;
-    camera.updateProjectionMatrix();
     dirty = true;
   }
+  // the whole board fits at every turn: its diagonal across the width, and a
+  // little more room the higher you look from, where the board stands deeper
+  function fit() {
+    const [lo, hi] = PITCH, mid = Math.atan(0.72);
+    const k = view.pitch < mid ? 0.88 + 0.12 * (view.pitch - lo) / (mid - lo) : 1 + 0.45 * (view.pitch - mid) / (hi - mid);
+    const halfW = (compact ? 43 : 42) * k, aspect = cssW / cssH;
+    if (camera.right === halfW && camera.top === halfW / aspect) return;
+    camera.left = -halfW; camera.right = halfW; camera.top = halfW / aspect; camera.bottom = -halfW / aspect;
+    camera.updateProjectionMatrix();
+  }
   function place() {
+    fit();
     const r = 120;
     camera.position.set(Math.sin(view.yaw) * Math.cos(view.pitch) * r, Math.sin(view.pitch) * r + 3, Math.cos(view.yaw) * Math.cos(view.pitch) * r + 1);
     camera.lookAt(0, 3, 1);
@@ -449,25 +460,34 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     const t = hit ? hit.object.userData.tags[hit.instanceId] : '';
     return tags.has(t) ? t : '';
   }
-  // dragging turns the city; a tap without a drag opens a ticket
+  // dragging sideways turns the city, and with a mouse up and down tilts it (on a
+  // touch screen that scrolls the page, so the arrows tilt it); a tap without a
+  // drag opens a ticket
   let drag = null;
-  canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, yaw: view.yaw, moved: false, id: e.pointerId }; });
+  canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: view.yaw, pitch: view.pitch, moved: false, id: e.pointerId, mouse: e.pointerType !== 'touch' }; });
   canvas.addEventListener('pointermove', (e) => {
     if (!drag) { light(pick(e)); return; }
-    const dx = e.clientX - drag.x;
-    if (!drag.moved && Math.abs(dx) > 4) { drag.moved = true; canvas.setPointerCapture(drag.id); }
-    if (drag.moved) { view.yaw = drag.yaw - dx * 0.008; view.goal = null; dirty = true; }
+    const dx = e.clientX - drag.x, dy = drag.mouse ? e.clientY - drag.y : 0;
+    if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) { drag.moved = true; canvas.setPointerCapture(drag.id); }
+    if (!drag.moved) return;
+    view.yaw = drag.yaw - dx * 0.008; view.goal = null;
+    if (drag.mouse) { view.pitch = tilted(drag.pitch + dy * 0.006); view.pitchGoal = null; }
+    dirty = true;
   });
   canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t) open(t); else close(); } });
   canvas.addEventListener('pointercancel', () => { drag = null; });
   canvas.addEventListener('pointerleave', () => { if (!drag) light(''); });
   // the arrows turn it a quarter at a time
   const turn = (dir) => { view.goal = (view.goal ?? view.yaw) + dir * Math.PI / 2; dirty = true; };
+  const tilt = (dir) => { view.pitchGoal = tilted((view.pitchGoal ?? view.pitch) + dir * 0.35); dirty = true; };
   const arrows = document.createElement('div');
   arrows.className = 'city-turn';
   arrows.innerHTML = '<button type="button" aria-label="Turn the city left">&#8634;</button><button type="button" aria-label="Turn the city right">&#8635;</button>';
+  arrows.insertAdjacentHTML('beforeend', '<button type="button" aria-label="Look from higher up">&#9650;</button><button type="button" aria-label="Look from lower down">&#9660;</button>');
   arrows.children[0].addEventListener('click', () => turn(-1));
   arrows.children[1].addEventListener('click', () => turn(1));
+  arrows.children[2].addEventListener('click', () => tilt(1));
+  arrows.children[3].addEventListener('click', () => tilt(-1));
   stage.appendChild(arrows);
 
   // ---- the map of the lines, in a corner: the same city without buildings ----
@@ -578,6 +598,12 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       const d = view.goal - view.yaw;
       view.yaw += Math.abs(d) < 0.002 ? d : d * Math.min(1, 0.12 * dt);
       if (Math.abs(d) < 0.002) view.goal = null;
+      dirty = true;
+    }
+    if (view.pitchGoal !== null) {
+      const d = view.pitchGoal - view.pitch;
+      view.pitch += Math.abs(d) < 0.002 ? d : d * Math.min(1, 0.12 * dt);
+      if (Math.abs(d) < 0.002) view.pitchGoal = null;
       dirty = true;
     }
     if (speed > 0) { move(dt, speed * 2); dirty = true; }
