@@ -719,7 +719,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
-.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); } .city-label--tram { --c: #2C4A9A; }
+.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); } .city-label--tram { --c: #2C4A9A; } .city-label--lab { --c: #1E98AC; }
 .city-ticket {
   position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
   background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
@@ -735,6 +735,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
 .city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
 .city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+/* what takes you somewhere in the city: in at a door, or on to the tools and the papers */
+.city-ticket-go { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; line-height: inherit; color: #FFFFFF; background: #167A8A; border: 1.5px solid var(--ink); padding: 0 8px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.city-ticket-go:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
 .city-ticket-x { position: absolute; right: 6px; top: 3px; border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
 .city-turn { position: absolute; right: 6px; top: 6px; z-index: 2; display: flex; gap: 6px; }
 /* the map of the lines in a corner: the city without its buildings */
@@ -763,11 +766,20 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-edge { stroke: color-mix(in srgb, #8D949C 60%, var(--card)); stroke-width: 3; }
 .city-map .city-map-town { font: italic 400 10px var(--font-body); fill: var(--muted); }
 .city-map-hill { fill: color-mix(in srgb, #C9B98A 45%, var(--card)); }
+.city-map-room { fill: color-mix(in srgb, #DADBD6 45%, var(--card)); stroke: var(--ink); stroke-width: 2; }
+.city-map-glass { fill: none; stroke: #7FB8D6; stroke-width: 3; }
+.city-map-bench rect { fill: var(--card); stroke: color-mix(in srgb, var(--ink) 55%, var(--card)); stroke-width: 1.2; }
+.city-map-gap { fill: none; stroke: var(--card); stroke-width: 3; }
+.city-map-door { cursor: pointer; }
+.city-map-door rect { fill: #167A8A; stroke: var(--ink); stroke-width: 2; }
+.city-map-door:hover rect { fill: #1E98AC; }
+.city-map .city-map-door text { fill: #FFFFFF; }
 .city-map-sea { fill: color-mix(in srgb, #4F9CC8 35%, var(--card)); }
 .city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
-.city-turn .city-bus, .city-turn .city-tram { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
+.city-turn .city-bus, .city-turn .city-tram, .city-turn .city-door { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
 .city-turn .city-tram { background: #E6ECFA; }
-.city-turn .city-bus svg, .city-turn .city-tram svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
+.city-turn .city-door { background: #DDF1F4; }
+.city-turn .city-bus svg, .city-turn .city-tram svg, .city-turn .city-door svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
 .city-on .city-list-toggle { display: table; }
@@ -1293,6 +1305,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .city-stage { aspect-ratio: 100 / 72; }
   .city-map { width: 132px; padding: 3px 4px 2px; }
   .city-map text { display: none; }
+  /* the arrows in a row, and under them the bus, the tram or the door, clear of the map */
+  .city-turn { flex-wrap: wrap; justify-content: flex-end; max-width: 146px; }
   .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
   .city-label { position: static; transform: none !important; }
   .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }

@@ -97,10 +97,11 @@ function pathOf(start, legs) {
 function makeBoard(W = 148, D = 96) {
   const S = 2, LOW = 8, H = 64;
   const n = W * D * H;
-  const cells = new Uint16Array(n), tagOf = new Uint8Array(n), glowOf = new Uint8Array(n);
+  const cells = new Uint16Array(n), tagOf = new Uint8Array(n), glowOf = new Uint8Array(n), partOf = new Uint8Array(n);
   const colors = [null], colorIds = new Map(), tagNames = [''], tagIds = new Map([['', 0]]);
   const inside = (x, y, z) => x >= 0 && x < W && z >= 0 && z < D && y >= -LOW && y < H - LOW;
   const at = (x, y, z) => ((y + LOW) * D + z) * W + x;
+  let part = 0;
   function put(x, y, z, c, tag = '', glow = false) {
     if (!inside(x, y, z)) return;
     const col = typeof c === 'function' ? c(x, y, z) : c;
@@ -109,8 +110,10 @@ function makeBoard(W = 148, D = 96) {
     let t = tagIds.get(tag);
     if (t === undefined) { t = tagNames.length; tagNames.push(tag); tagIds.set(tag, t); }
     const i = at(x, y, z);
-    cells[i] = id; tagOf[i] = t; glowOf[i] = glow ? 1 : 0;
+    cells[i] = id; tagOf[i] = t; glowOf[i] = glow === 2 ? 2 : glow ? 1 : 0; partOf[i] = part;
   }
+  // what is built in fn belongs to part k (a wall that can be taken away, and what hangs on it)
+  const inPart = (k, fn) => { part = k; fn(); part = 0; };
   const colorAt = (x, y, z) => (inside(x, y, z) ? colors[cells[at(x, y, z)]] : null);
   const del = (x, y, z) => { if (inside(x, y, z)) cells[at(x, y, z)] = 0; };
   const fill = (x0, y0, z0, w, h, d, c, tag = '', glow = false) => {
@@ -271,18 +274,19 @@ function makeBoard(W = 148, D = 96) {
       if (r < 0.012) put(x, 0, z, FLOWERS[Math.floor(hash(x, 2, z) * FLOWERS.length)]);
       else if (r < 0.04) put(x, 0, z, P.turf);
     }
-    // only the blocks that can be seen: nothing is ever seen from below
-    const filled = (x, y, z) => inside(x, y, z) && cells[at(x, y, z)] > 0;
+    // only the blocks that can be seen: nothing is ever seen from below, and a part that can be
+    // taken away hides nothing that stays
+    const filled = (x, y, z, p) => { if (!inside(x, y, z)) return false; const i = at(x, y, z); return cells[i] > 0 && (partOf[i] === p || partOf[i] === 0); };
     const list = [];
     for (let y = -LOW; y < H - LOW; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
-      const i = at(x, y, z), id = cells[i];
+      const i = at(x, y, z), id = cells[i], p = partOf[i];
       if (!id) continue;
-      if (filled(x, y + 1, z) && filled(x - 1, y, z) && filled(x + 1, y, z) && filled(x, y, z - 1) && filled(x, y, z + 1)) continue;
-      list.push({ x, y, z, c: colors[id], tag: tagNames[tagOf[i]], glow: glowOf[i] === 1 });
+      if (filled(x, y + 1, z, p) && filled(x - 1, y, z, p) && filled(x + 1, y, z, p) && filled(x, y, z - 1, p) && filled(x, y, z + 1, p)) continue;
+      list.push({ x, y, z, c: colors[id], tag: tagNames[tagOf[i]], glow: glowOf[i], part: p });
     }
     return { list, S, W: W / S, D: D / S, ...extra };
   }
-  return { W, D, put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lawn, lay, bumper, ballast, road, roundabout, shelter, tramLine, finish };
+  return { W, D, put, colorAt, del, fill, inPart, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lawn, lay, bumper, ballast, road, roundabout, shelter, tramLine, finish };
 }
 
 // ---- the tool city ----
@@ -1084,12 +1088,295 @@ function buildI2(ground) {
   return b.finish({ pins: { i2sysbio: [36, top + 8, 20] } });
 }
 
+// ---- inside I2SysBio: the lab ----
+// A floor of the institute, as its photographs show it, open like a doll's house: the walls on your
+// side drop to their skirting as you turn it round. Islands of white benches, each with a panel of
+// sockets down its spine, a lamp over it on two posts and a sink at its end; the bench under the
+// windows, the white louvers outside them; the biosafety cabinets in a row, pink medium on their steel;
+// the fridges, the -80, the incubators and their gas along the wall, the door and the coats on their
+// hooks; the desks, two screens on each, where the genomes are read (mine is in thesis mode), and the
+// coffee. What shines by itself, screens and lit panels, is drawn in its own colours day and night.
+const LAB_WALLS = { N: [1, 0, -1], S: [2, 0, 1], W: [3, -1, 0], E: [4, 1, 0] };   // each wall's part, and the way it faces
+function buildLab(lineages) {
+  const b = makeBoard();
+  const { W, D, put, del, fill, clump, inPart } = b;
+  const H = 18;                                                                          // the top of the walls
+  const white = '#F4F4F0', grey = '#9AA1A8', dark = '#2E3238', steel = '#B8BEC4', black = '#26292D', cap = '#A69F92';
+  const plaster = tone('#F2EFE8', ['#EAE6DD', 0.18]);
+  const slab = tone('#BDB6A8', ['#B1AA9C', 0.3]);
+  const SHINE = 2;                                                                       // lit by itself
+
+  // ---- the floor, and the slab under it, cut where the lab ends ----
+  const vinyl = tone('#DADBD6', ['#D2D3CE', 0.2], ['#E1E2DD', 0.08]);
+  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) { put(x, -1, z, vinyl); put(x, -2, z, slab); put(x, -3, z, slab); put(x, -4, z, '#A8A194'); }
+
+  // ---- the walls: a grey skirting that stays, and above it the wall, which can go ----
+  const wall = (k, x0, z0, w, d) => { fill(x0, 0, z0, w, 2, d, '#8E959C'); inPart(k, () => { fill(x0, 2, z0, w, H - 2, d, plaster); fill(x0, H, z0, w, 1, d, cap); }); };
+  wall(1, 0, 0, W, 1); wall(2, 0, D - 1, W, 1); wall(3, 0, 1, 1, D - 2); wall(4, W - 1, 1, 1, D - 2);
+  // the building's columns, where the windows break
+  wall(1, 34, 1, 3, 2); wall(1, 68, 1, 3, 2); wall(1, 101, 1, 3, 2); wall(4, W - 3, 45, 2, 3);
+  // the windows, from the bench up, framed every nine blocks and across the middle: through most
+  // panes the white louvers outside and the light between them, through the rest the Parc
+  const glazing = (k, a0, a1) => inPart(k, () => {
+    for (let a = a0; a <= a1; a++) {
+      const open = hash(Math.floor((a - a0) / 9), 7, a0) < 0.35;
+      for (let y = 5; y < H; y++) {
+        const frame = (a - a0) % 9 === 0 || a === a1 || y === 5 || y === 11 || y === H - 1;
+        const c = frame ? '#8C9399' : !open ? (y % 2 ? '#F8F8F4' : '#B9D5E2')
+          : y > 7 ? '#CFE5EF' : a % 11 < 4 ? '#6E9E5E' : hash(a, y, 5) < 0.5 ? '#B8735A' : '#C6866B';   // the sky; a tree, or brick
+        if (k === 1) put(a, y, 0, c); else put(W - 1, y, a, c);
+      }
+    }
+  });
+  glazing(1, 1, 33); glazing(1, 37, 67); glazing(1, 71, 100); glazing(4, 5, 44); glazing(4, 48, D - 6);
+
+  // ---- furniture ----
+  // a worktop, pale with a dark edge, and white cupboards under it, doors to the side the room sees
+  const worktop = (x0, z0, x1, z1, tag = '') => { for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) put(x, 5, z, x === x0 || x === x1 || z === z0 || z === z1 ? '#4E545A' : '#E7E8E4', tag); };
+  const cupboards = (x0, z0, x1, z1, f, tag = '') => {
+    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) { put(x, 0, z, '#6B7178', tag); for (let y = 1; y <= 4; y++) put(x, y, z, white, tag); }
+    const [lo, hi] = f === 'S' || f === 'N' ? [x0, x1] : [z0, z1];
+    for (let a = lo; a <= hi; a++) {
+      const [x, z] = f === 'S' ? [a, z1] : f === 'N' ? [a, z0] : f === 'E' ? [x1, a] : [x0, a];
+      if ((a - lo) % 4 === 0) for (let y = 1; y <= 4; y++) put(x, y, z, '#DCDDD8', tag);
+      if ((a - lo) % 4 === 2) put(x, 3, z, grey, tag);
+    }
+  };
+  // what stands on the benches, from y up
+  const bottle = (x, y, z, glass = '#D6ECF3', lid = '#2D6CB5', tag = '') => { fill(x, y, z, 1, 2, 1, glass, tag); put(x, y + 2, z, lid, tag); };
+  const tips = (x, y, z, c, tag = '') => fill(x, y, z, 2, 1, 2, c, tag);
+  const rack = (x, y, z, tag = '') => { fill(x, y, z, 3, 1, 2, white, tag); BASES.slice(0, 3).forEach((c, i) => put(x + i, y + 1, z + (i % 2), c, tag)); };
+  const pipettes = (x, y, z, tag = '') => { fill(x, y, z, 2, 1, 2, dark, tag); fill(x, y + 1, z, 1, 4, 1, grey, tag); [['#F5D35B', 1, 0], ['#3F6FC4', 0, 1], ['#E0603C', 1, 1]].forEach(([c, dx, dz]) => fill(x + dx, y + 2, z + dz, 1, 3, 1, c, tag)); };
+  const fuge = (x, y, z, tag = '') => { fill(x, y, z, 3, 2, 3, white, tag); fill(x, y + 2, z, 3, 1, 3, '#4A5058', tag); put(x + 1, y + 2, z + 1, '#6E757D', tag); put(x + 1, y + 1, z + 2, '#6BE07F', tag, SHINE); };
+  const stirrer = (x, y, z, tag = '') => { fill(x, y, z, 2, 1, 2, white, tag); fill(x, y + 1, z, 2, 1, 2, '#3C4148', tag); fill(x, y + 2, z, 1, 2, 1, '#CFE7EF', tag); };
+  const balance = (x, y, z, tag = '') => { fill(x, y, z, 3, 1, 3, white, tag); fill(x, y + 1, z, 3, 2, 2, '#D9EEF4', tag); put(x + 1, y, z + 2, '#6BE07F', tag, SHINE); };
+  const pcr = (x, y, z, tag = '') => { fill(x, y, z, 3, 2, 4, '#C9CDD1', tag); fill(x, y + 2, z, 3, 1, 3, '#555B62', tag); put(x + 1, y + 1, z + 3, '#4FA3D9', tag, SHINE); };
+  const scope = (x, y, z, tag = '') => { fill(x, y, z, 3, 1, 3, white, tag); fill(x + 1, y + 1, z, 1, 3, 1, dark, tag); fill(x, y + 2, z + 1, 3, 1, 2, dark, tag); fill(x, y + 4, z, 3, 1, 2, white, tag); put(x + 1, y + 5, z, dark, tag); };
+  const notebook = (x, y, z, c = '#3E9B5A', tag = '') => fill(x, y, z, 2, 1, 1, c, tag);
+  const ice = (x, y, z, tag = '') => { fill(x, y, z, 2, 2, 2, '#3E7FD1', tag); fill(x, y + 2, z, 2, 1, 2, white, tag); };
+  const stool = (x, z, tag = '') => { fill(x, 3, z, 3, 1, 3, black, tag); fill(x + 1, 1, z + 1, 1, 2, 1, grey, tag); for (const [dx, dz] of [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]) put(x + dx, 0, z + dz, dark, tag); };
+  const plant = (x, y, z, big = false) => { fill(x, y, z, big ? 3 : 1, big ? 3 : 1, big ? 3 : 1, '#E8E4DA'); clump(x + (big ? 1.5 : 0.5), y + (big ? 6 : 2.2), z + (big ? 1.5 : 0.5), big ? 3 : 1.3, big ? 3.6 : 1.2, big ? 3 : 1.3, tone(P.leaf, [P.leaf2, 0.35], [P.leaf3, 0.15]), '', 0.6); };
+  const mug = (x, z, c, tag = '') => { put(x, 5, z, c, tag); put(x + 1, 5, z, shade(c, 0.8), tag); };
+
+  // a person four blocks across, looking N, S, E or W: standing, working at a bench with their hands
+  // out over it, or sitting, on a stool or at a desk on an office chair; a white coat or their own
+  // clothes, blue gloves, a mask, hair short, long, tied back or in a bun. `empty`: only the chair.
+  function person(x, z, face, { pose = 'stand', coat = true, top = '#5B7A99', legs = '#3B4F73', shoes = '#2A2D33', skin = P.skin, hair = '#3A2A20', style = 'short', gloves = false, mask = false, empty = false, tag = '' } = {}) {
+    // a runs across them (0 to 3), f from their back (0) to their front (1) and on out ahead of them
+    const at = (a, f) => (face === 'S' ? [x + 3 - a, z + f] : face === 'N' ? [x + a, z + 1 - f] : face === 'E' ? [x + f, z + a] : [x + 1 - f, z + 3 - a]);
+    const p = (a, y, f, c) => { const [px, pz] = at(a, f); put(px, y, pz, c, tag); };
+    const sit = pose === 'sit' || pose === 'stool', seat = pose === 'sit' ? 2 : 3, base = sit ? seat + 2 : 5;
+    const body = coat ? '#F6F6F2' : top, hands = gloves ? '#6C9BE0' : skin;
+    if (sit) {
+      // the seat on its column and foot, and an office chair's back
+      for (let a = 0; a < 4; a++) for (let f = 0; f < 2; f++) p(a, seat, f, black);
+      for (let y = 1; y < seat; y++) p(1, y, 0, grey);
+      for (const [a, f] of [[1, 0], [0, 0], [3, 0], [1, -1], [1, 1]]) p(a, 0, f, dark);
+      if (pose === 'sit') for (let a = 0; a < 4; a++) for (let y = seat + 1; y <= seat + 5; y++) p(a, y, -1, black);
+      if (empty) return;
+      for (let a = 0; a < 4; a++) {
+        for (let f = 0; f <= 2; f++) p(a, seat + 1, f, legs);
+        for (let y = 1; y <= seat; y++) p(a, y, 2, a === 1 || a === 2 ? shade(legs, 0.85) : legs);
+        p(a, 0, 2, shoes); p(a, 0, 3, shoes);
+      }
+    } else for (let a = 0; a < 4; a++) for (let f = 0; f < 2; f++) {
+      p(a, 0, f, shoes);
+      for (let y = 1; y <= 4; y++) p(a, y, f, coat && y === 4 ? body : (a === 1 || a === 2) && y < 3 ? shade(legs, 0.82) : legs);
+    }
+    // the body, the shirt at a coat's neck, the arms: down at the sides, or out in front
+    for (let a = 0; a < 4; a++) for (let f = 0; f < 2; f++) for (let y = base; y < base + 4; y++) p(a, y, f, body);
+    if (coat) { p(1, base + 3, 1, top); p(2, base + 3, 1, top); }
+    const reach = pose !== 'stand';
+    for (const a of [-1, 4]) {
+      for (let y = reach ? base + 2 : base + 1; y < base + 4; y++) for (let f = 0; f < 2; f++) p(a, y, f, body);
+      if (reach) { p(a, base + 1, 1, body); p(a, base + 1, 2, body); p(a, base + 1, 3, hands); } else p(a, base, 1, hands);
+    }
+    // the head: a face to the front with its eyes, the hair over the back and the top
+    for (let a = 0; a < 4; a++) for (let f = 0; f < 2; f++) for (let y = base + 4; y < base + 7; y++) p(a, y, f, skin);
+    p(1, base + 5, 1, '#2B2522'); p(2, base + 5, 1, '#2B2522');
+    if (mask) for (let a = 0; a < 4; a++) p(a, base + 4, 1, '#BFD9EE');
+    for (let a = 0; a < 4; a++) {
+      for (let y = style === 'short' ? base + 5 : base + 4; y <= base + 6; y++) p(a, y, 0, hair);
+      p(a, base + 6, 1, hair); p(a, base + 7, 0, hair); p(a, base + 7, 1, hair);
+      if (style === 'long') for (let y = base + 2; y <= base + 6; y++) p(a, y, -1, hair);
+    }
+    if (style === 'pony') { p(1, base + 6, -1, hair); p(2, base + 6, -1, hair); p(1, base + 5, -1, hair); p(2, base + 4, -1, hair); }
+    if (style === 'bun') { p(1, base + 8, 0, hair); p(2, base + 8, 0, hair); p(1, base + 7, -1, hair); p(2, base + 7, -1, hair); }
+  }
+
+  // ---- the bench under the windows, the west end of the north wall ----
+  for (const [x0, x1] of [[9, 33], [37, 67], [71, 100]]) { cupboards(x0, 1, x1, 5, 'S'); worktop(x0, 1, x1, 5); }
+  stirrer(11, 6, 2); stirrer(14, 6, 2); balance(21, 6, 2); bottle(28, 6, 3); bottle(29, 6, 2, '#B7772F', '#26292D');
+  fuge(40, 6, 2); balance(45, 6, 2); bottle(56, 6, 3, '#D6ECF3', '#3E9B5A'); stirrer(59, 6, 2); fill(62, 6, 2, 4, 2, 3, steel); fill(62, 8, 2, 4, 1, 3, '#8E959C');
+  scope(74, 6, 2); bottle(80, 6, 3, '#B7772F', '#26292D'); stirrer(84, 6, 2); tips(90, 6, 3, '#58B368'); rack(94, 6, 2); bottle(99, 6, 3);
+  person(50, 6, 'N', { pose: 'work', hair: '#1E1B1A', style: 'bun', skin: '#E8B990' });
+
+  // ---- the biosafety cabinets along the rest of it: on a stand, the sash up and the lamp on inside,
+  // the panel over it, the biohazard label; pink medium, a rack and a pipette on the steel ----
+  const cabinet = (x0) => {
+    for (const [x, z] of [[x0, 1], [x0 + 10, 1], [x0, 6], [x0 + 10, 6]]) fill(x, 0, z, 1, 4, 1, grey);
+    fill(x0, 1, 1, 11, 1, 1, grey);
+    fill(x0, 4, 1, 11, 12, 6, '#EDEFEE');
+    for (let x = x0 + 1; x <= x0 + 9; x++) {
+      for (let z = 2; z <= 6; z++) { for (let y = 5; y <= 7; y++) del(x, y, z); put(x, 4, z, steel); }
+      for (let y = 5; y <= 7; y++) put(x, y, 1, '#FFFFFF', '', SHINE);
+      for (let y = 8; y <= 11; y++) put(x, y, 6, '#C4E2EC', '', true);
+      put(x, 12, 6, '#3F454C');
+    }
+    put(x0 + 2, 12, 6, '#6BE07F', '', SHINE); put(x0 + 8, 13, 6, '#F2C230'); put(x0 + 8, 14, 6, '#F2C230'); put(x0 + 9, 14, 6, '#F2C230');
+    fill(x0 + 2, 5, 3, 2, 2, 1, '#EE8FA6'); put(x0 + 2, 7, 3, '#F4F4F0'); rack(x0 + 5, 5, 3); put(x0 + 8, 5, 4, '#3F6FC4'); put(x0 + 8, 6, 4, '#3F6FC4');
+  };
+  [106, 119, 132].forEach(cabinet);
+  person(109, 8, 'N', { pose: 'stool', gloves: true, hair: '#3A2A20', style: 'pony' });
+  person(122, 8, 'N', { pose: 'stool', empty: true });
+  person(135, 8, 'N', { pose: 'stool', gloves: true, mask: true, hair: '#7A5230', skin: '#E8B990' });
+  fill(143, 0, 8, 3, 4, 3, '#F2C230'); fill(143, 4, 8, 3, 1, 3, '#E0B020'); put(144, 2, 10, black);   // the yellow bin, for what has touched the cells
+
+  // ---- along the west wall: a fridge, the -80, two incubators on a stand and their gas, the
+  // reagents behind a glass door; the basin, the extinguisher, the door, the coats ----
+  fill(1, 0, 8, 5, 14, 6, '#F3F3F0'); for (let z = 8; z <= 13; z++) { put(5, 0, z, '#6B7178'); put(5, 9, z, '#D5D6D2'); }
+  fill(6, 5, 12, 1, 3, 1, grey); fill(6, 10, 12, 1, 3, 1, grey); put(5, 12, 9, '#6BE07F', '', SHINE);
+  fill(1, 0, 16, 7, 14, 8, '#E9EAE7'); for (let z = 16; z <= 23; z++) { put(7, 0, z, '#6B7178'); put(7, 1, z, z % 2 ? '#6B7178' : '#E9EAE7'); put(7, 12, z, '#3F454C'); }
+  put(7, 12, 18, '#5FB0E8', '', SHINE); put(7, 12, 19, '#5FB0E8', '', SHINE); fill(8, 5, 22, 1, 5, 1, dark);
+  for (const [x, z] of [[1, 26], [6, 26], [1, 32], [6, 32]]) fill(x, 0, z, 1, 4, 1, grey);
+  for (const y0 of [4, 10]) {
+    fill(1, y0, 26, 6, 6, 7, '#CDD2D6');
+    for (let z = 26; z <= 32; z++) for (let y = y0; y < y0 + 6; y++) if (z === 26 || z === 32 || y === y0 || y === y0 + 5) put(6, y, z, '#AEB4BA');
+    put(6, y0 + 4, 28, '#6BE07F', '', SHINE); put(6, y0 + 4, 29, '#6BE07F', '', SHINE);
+  }
+  fill(2, 0, 34, 2, 13, 2, '#8E959C'); fill(2, 13, 34, 2, 1, 2, '#5B6168'); put(2, 14, 34, dark); put(1, 9, 34, dark); put(1, 9, 35, dark);
+  fill(1, 0, 38, 5, 15, 7, white);
+  for (let z = 39; z <= 43; z++) for (let y = 2; y <= 13; y++) {
+    const shelf = y % 3 === 2, r = hash(z, y, 40);
+    put(5, y, z, shelf ? steel : r < 0.25 ? '#D6ECF3' : r < 0.45 ? '#2D6CB5' : r < 0.6 ? '#B7772F' : r < 0.75 ? '#C8372D' : r < 0.85 ? '#3E9B5A' : '#EDF6F9', '', SHINE);
+  }
+  fill(1, 0, 50, 3, 5, 5, white); for (let z = 51; z <= 53; z++) { put(2, 5, z, steel); put(3, 5, z, steel); } put(2, 4, 52, '#7F868D'); del(2, 5, 52); put(1, 6, 52, steel); put(1, 7, 52, steel); put(2, 7, 52, steel);
+  inPart(3, () => {
+    fill(1, 8, 51, 1, 3, 3, white); put(1, 8, 52, grey); put(1, 7, 54, '#3F6FC4');                  // the towels and the soap
+    fill(1, 3, 57, 1, 3, 1, '#C8372D'); put(1, 6, 57, black);                                       // the extinguisher
+    fill(1, 10, 60, 1, 2, 2, '#24324A'); put(1, 11, 60, '#FFFFFF');                                // the plate by the door
+    fill(1, 16, 65, 1, 1, 6, '#2FA35A', '', SHINE); put(1, 16, 67, '#FFFFFF', '', SHINE);           // the way out, lit
+    // the door, open: the corridor through its frame, and the leaf swung into the room on its hinges
+    for (let z = 63; z <= 72; z++) for (let y = 2; y <= 15; y++) { const way = z > 63 && z < 72 && y < 15; put(0, y, z, way ? '#8F99A3' : '#6B7178', way ? 'out' : ''); }
+    for (let x = 1; x <= 8; x++) for (let y = 0; y <= 14; y++) put(x, y, 63, x >= 3 && x <= 5 && y >= 8 && y <= 12 ? '#A9CFE3' : x === 8 || y === 14 ? '#B8956A' : '#C9A67A', 'out');
+    put(7, 7, 64, steel, 'out');
+    fill(1, 14, 75, 1, 1, 11, steel);                                                              // the hooks, and the coats on them
+    for (const z0 of [75, 79, 83]) for (let z = z0; z < z0 + 3; z++) for (let y = 6; y <= 13; y++) put(1, y, z, y === 13 ? '#E4E4DE' : y === 8 && z === z0 + 1 ? '#E1E1DB' : '#F6F6F2');
+  });
+  for (let z = 64; z <= 71; z++) { put(0, 0, z, '#8F99A3', 'out'); put(0, 1, z, '#8F99A3', 'out'); for (let x = 1; x <= 6; x++) put(x, -1, z, '#5C636B'); }   // and a mat
+  // a big centrifuge on the floor, a plant in the corner
+  fill(12, 0, 46, 6, 6, 6, white); fill(12, 6, 46, 6, 1, 6, '#4A5058'); put(14, 6, 48, '#6E757D'); put(15, 6, 49, '#6E757D'); put(14, 4, 51, '#6BE07F', '', SHINE);
+  plant(4, 0, 89, true);
+
+  // ---- the islands: drawers either side with room for knees between, a worktop, the spine with its
+  // sockets, a lamp over it on two posts, and at the south end the sink ----
+  function island(x0, z0, z1, tag) {
+    for (let z = z0; z <= z1; z++) {
+      const k = z - z0;
+      fill(x0 + 4, 0, z, 3, 5, 1, '#E6E6E1', tag);                                            // the panel down the middle
+      if (k % 12 >= 6 && z <= z1 - 6) continue;                                               // room for knees
+      for (const x of [x0, x0 + 1, x0 + 2, x0 + 3, x0 + 7, x0 + 8, x0 + 9, x0 + 10]) { put(x, 0, z, '#6B7178', tag); for (let y = 1; y <= 4; y++) put(x, y, z, white, tag); }
+      if (k % 12 === 2 || z === z1 - 3) for (const x of [x0, x0 + 10]) { put(x, 2, z, grey, tag); put(x, 4, z, grey, tag); }   // drawer handles
+    }
+    worktop(x0, z0, x0 + 10, z1, tag);
+    for (let z = z0 + 1; z <= z1 - 6; z++) {
+      fill(x0 + 4, 6, z, 3, 3, 1, white, tag);
+      const s = (z - z0) % 6;
+      if (s === 3 || s === 4) for (const x of [x0 + 4, x0 + 6]) put(x, 7, z, s === 3 ? '#C8372D' : '#FFFFFF', tag);   // a red socket by a white one
+    }
+    for (const z of [z0 + 1, z1 - 6]) fill(x0 + 5, 9, z, 1, 9, 1, grey, tag);                   // two posts, and the lamp between them
+    for (let z = z0 + 2; z <= z1 - 7; z++) { put(x0 + 5, 17, z, grey, tag); put(x0 + 5, 16, z, '#FFF4D6', tag, true); }
+    // the sink at the end: a steel basin, a swan-neck tap, glass drying on a rack over it
+    for (let x = x0 + 3; x <= x0 + 7; x++) for (let z = z1 - 4; z <= z1 - 1; z++) put(x, 5, z, steel, tag);
+    for (let x = x0 + 4; x <= x0 + 6; x++) for (let z = z1 - 3; z <= z1 - 2; z++) { del(x, 5, z); put(x, 4, z, '#7F868D', tag); }
+    fill(x0 + 5, 6, z1 - 5, 1, 4, 1, steel, tag); put(x0 + 5, 9, z1 - 4, steel, tag); put(x0 + 5, 8, z1 - 3, steel, tag);
+    for (let x = x0 + 4; x <= x0 + 6; x++) for (let y = 11; y <= 15; y++) put(x, y, z1 - 5, (x + y) % 2 ? '#A7AEB5' : '#DDEBF1', tag);
+  }
+  const T = 'pgl';
+  [34, 62, 90, 118].forEach(x0 => island(x0, 12, 46, T));
+  // what is on them, and who is at them
+  pipettes(35, 6, 14, T); tips(35, 6, 18, '#3F7FD6', T); tips(35, 6, 21, '#F2C230', T); rack(41, 6, 15, T); bottle(41, 6, 24, '#D6ECF3', '#2D6CB5', T); notebook(36, 6, 28, '#3E9B5A', T); ice(41, 6, 33, T);
+  person(32, 13, 'E', { pose: 'work', gloves: true, hair: '#7A5230', style: 'bun', tag: T });
+  person(45, 31, 'W', { pose: 'stool', gloves: true, hair: '#1E1B1A', style: 'long', skin: '#C99571', tag: T }); stool(46, 19, T);
+  scope(63, 6, 20, T); pipettes(69, 6, 14, T); tips(69, 6, 26, '#58B368', T); bottle(65, 6, 30, '#B7772F', '#26292D', T); bottle(64, 6, 31, '#D6ECF3', '#C8372D', T); rack(69, 6, 36, T);
+  person(60, 19, 'E', { pose: 'stool', gloves: true, mask: true, hair: '#C99A55', style: 'pony', tag: T });
+  person(73, 37, 'W', { pose: 'work', top: '#3E9B5A', hair: '#3A2A20', tag: T }); stool(74, 31, T);
+  pcr(91, 6, 15, T); tips(97, 6, 16, '#3F7FD6', T); fuge(97, 6, 26, T); pipettes(91, 6, 33, T); notebook(97, 6, 34, '#3F6FC4', T);
+  person(101, 19, 'W', { pose: 'stool', hair: '#8A3F26', style: 'long', skin: '#F2D0B0', tag: T }); stool(86, 31, T);
+  rack(119, 6, 16, T); bottle(125, 6, 18, '#D6ECF3', '#2D6CB5', T); bottle(126, 6, 18, '#D6ECF3', '#2D6CB5', T); tips(125, 6, 27, '#F2C230', T); ice(119, 6, 30, T); stirrer(125, 6, 35, T);
+  person(116, 30, 'E', { pose: 'work', hair: '#9E9A95', skin: '#E8B990', tag: T });
+  person(78, 49, 'S', { hair: '#C99A55', style: 'long', skin: '#F2D0B0' });
+
+  // ---- a low shelf of binders between the benches and the desks, facing the desks ----
+  fill(30, 0, 51, 32, 7, 3, '#E4E4DF');
+  for (let x = 31; x <= 60; x++) for (const y0 of [1, 4]) {
+    const r = hash(x, y0, 53);
+    if (r > 0.88) continue;
+    const c = ['#3F6FC4', '#D0503F', '#3E9B5A', '#E0A030', '#8B6BB0', '#F4F4F0', '#2C4A9A'][Math.floor(r / 0.88 * 7)];
+    for (let y = y0; y < y0 + 2; y++) put(x, y, 53, c);
+  }
+  plant(33, 7, 52); fill(40, 7, 51, 4, 2, 3, '#C9A36B'); fill(52, 7, 52, 3, 1, 2, white);
+
+  // ---- the desks, where the genomes are read: two screens on each, and what they show ----
+  const PIX = { o: '#E0853C', w: '#E9E4D8', g: '#8FD694', b: '#7FB2E6', k: '#3A3F46', '-': '#9AA1A8', r: '#D0503F', x: '#5C6670' };
+  const SCREENS = {
+    code: ['#1E2328', ['ooo....', '.wwww..', '.gggg..', 'bbbbb..']],
+    shell: ['#1E2328', ['gg.....', 'ggggg..', 'g......', 'gggg...']],
+    tree: ['#F7F7F3', ['k--0...', 'k----1.', 'k-2....', 'k---3..']],
+    genes: ['#F7F7F3', ['bb.bbb.', '-------', 'rr.r.rr', '.g..g.g']],
+    ring: ['#1E2328', ['.ABCDE.', 'N.xx..F', 'M..xx.G', '.LKJIH.']],     // the fourteen lineages round the tree, in their colours
+  };
+  const pixel = (bg, ch) => (ch === '.' ? bg : /[0-9]/.test(ch) ? lineages[+ch] : /[A-N]/.test(ch) ? lineages[ch.charCodeAt(0) - 65] : PIX[ch]);
+  const monitor = (x, z, kind, tag) => {
+    const [bg, rows] = SCREENS[kind];
+    put(x + 3, 5, z, '#555B62', tag); put(x + 3, 5, z + 1, '#555B62', tag);
+    for (let i = 0; i < 7; i++) for (let j = 0; j < 4; j++) { put(x + i, 6 + j, z, dark, tag); put(x + i, 6 + j, z + 1, pixel(bg, rows[3 - j][i]), tag, SHINE); }
+  };
+  const desk = (x0, z0, screens, tag = '') => {
+    for (let x = x0; x <= x0 + 15; x++) for (let z = z0; z <= z0 + 5; z++) put(x, 4, z, '#F1F0EB', tag);
+    for (const [x, z] of [[x0, z0], [x0 + 15, z0], [x0, z0 + 5], [x0 + 15, z0 + 5]]) fill(x, 0, z, 1, 4, 1, grey, tag);
+    fill(x0 + 1, 1, z0, 14, 3, 1, '#DCDDD8', tag);
+    monitor(x0 + 1, z0, screens[0], tag); monitor(x0 + 8, z0, screens[1], tag);
+    fill(x0 + 5, 5, z0 + 3, 6, 1, 1, '#3A3F46', tag); put(x0 + 12, 5, z0 + 3, '#3A3F46', tag);
+  };
+  desk(30, 58, ['genes', 'code']); person(36, 64, 'N', { pose: 'sit', coat: false, top: '#D0503F', legs: '#2F3440', hair: '#1E1B1A' }); mug(42, 60, '#3F6FC4');
+  desk(56, 58, ['shell', 'tree']); person(62, 64, 'N', { pose: 'sit', empty: true }); plant(57, 5, 61);
+  desk(82, 58, ['tree', 'genes']); person(88, 64, 'N', { pose: 'sit', coat: false, top: '#E0A030', hair: '#7A5230', style: 'long', skin: '#E8B990' });
+  desk(108, 58, ['code', 'shell']); person(114, 64, 'N', { pose: 'sit', empty: true }); mug(110, 61, '#D0503F');
+  desk(30, 76, ['shell', 'genes']); person(36, 82, 'N', { pose: 'sit', empty: true });
+  // mine: the tree of the fourteen lineages, the code, the thesis in a pile, a mug
+  desk(56, 76, ['ring', 'code'], 'desk'); person(62, 82, 'N', { pose: 'sit', coat: false, top: '#46545A', legs: '#2F3440', hair: '#3A2A20', style: 'pony', tag: 'desk' });
+  fill(57, 5, 79, 3, 2, 2, white, 'desk'); put(57, 7, 79, '#1E98AC', 'desk'); put(58, 7, 79, white, 'desk'); mug(70, 80, '#E0A030', 'desk');
+  desk(82, 76, ['code', 'tree']); person(88, 82, 'N', { pose: 'sit', coat: false, top: '#8B6BB0', legs: '#2F3440', hair: '#C99A55', style: 'bun' });
+  desk(108, 76, ['genes', 'shell']); person(114, 82, 'N', { pose: 'sit', empty: true }); plant(121, 5, 79);
+
+  // ---- the coffee, in the corner by the windows: a counter, the machine with its light on, cups ----
+  cupboards(137, 58, 145, 70, 'W'); worktop(137, 58, 145, 70);
+  fill(141, 6, 61, 3, 5, 3, '#2E3238'); put(141, 9, 62, '#E0473A', '', SHINE); put(141, 7, 62, steel); fill(141, 6, 66, 2, 1, 2, '#C9A36B');
+  for (const [z, c] of [[64, '#FFFFFF'], [65, '#D0503F'], [68, '#3F6FC4']]) put(139, 6, z, c);
+  person(132, 63, 'E', { hair: '#1E1B1A', skin: '#9C6B4E' });
+  plant(141, 0, 87, true);
+
+  // ---- on the south wall: the whiteboard with a tree drawn on it, and a board of notices ----
+  inPart(2, () => {
+    for (let x = 40; x <= 67; x++) for (let y = 6; y <= 14; y++) put(x, y, 94, x === 40 || x === 67 || y === 6 || y === 14 ? '#9AA1A8' : '#FBFBF8');
+    for (let y = 8; y <= 13; y++) put(43, y, 94, dark);
+    [[8, 48, 0], [10, 51, 1], [12, 46, 2], [13, 49, 3]].forEach(([y, x1, k]) => { for (let x = 44; x < x1; x++) put(x, y, 94, dark); put(x1, y, 94, lineages[k]); });
+    for (const [y, x0, x1] of [[12, 55, 64], [10, 55, 61], [8, 55, 63]]) for (let x = x0; x <= x1; x++) if (hash(x, y, 9) < 0.8) put(x, y, 94, y === 10 ? '#D0503F' : '#2C4A9A');
+    for (let x = 90; x <= 104; x++) for (let y = 7; y <= 12; y++) put(x, y, 94, '#C9A36B');
+    for (const [x0, y0, c] of [[91, 8, '#FBFBF8'], [95, 10, '#F5D35B'], [98, 8, '#FBFBF8'], [101, 9, '#F29BB4']]) fill(x0, y0, 94, 3, 2, 1, c);
+  });
+
+  return b.finish({ pins: { pgl: [67, 20, 29], desk: [63, 13, 79] } });
+}
+
 // ---- turning blocks into meshes ----
-// in strips across the board, so that what is out of view, or out of the sun's, is not drawn
-function meshesOf(city, solidMat, glowMat, strips = 4) {
+// in strips across the board, so that what is out of view, or out of the sun's, is not drawn; what
+// glows at night apart, and what shines by itself (shineMat, unlit) apart again
+function meshesOf(city, solidMat, glowMat, strips = 4, shineMat = glowMat) {
   const width = Math.ceil(city.W * city.S / strips);
-  const solid = Array.from({ length: strips }, () => []), glow = Array.from({ length: strips }, () => []);
-  for (const v of city.list) (v.glow ? glow : solid)[Math.min(strips - 1, Math.floor(v.x / width))].push(v);
+  const solid = Array.from({ length: strips }, () => []), glow = Array.from({ length: strips }, () => []), shine = Array.from({ length: strips }, () => []);
+  for (const v of city.list) [solid, glow, shine][v.glow][Math.min(strips - 1, Math.floor(v.x / width))].push(v);
   const box = new THREE.BoxGeometry(1 / city.S, 1 / city.S, 1 / city.S);
   const make = (list, material) => {
     const mesh = new THREE.InstancedMesh(box, material, list.length);
@@ -1106,6 +1393,7 @@ function meshesOf(city, solidMat, glowMat, strips = 4) {
   const meshes = [];
   for (const list of solid) if (list.length) { const m = make(list, solidMat); m.castShadow = true; m.receiveShadow = true; meshes.push(m); }
   for (const list of glow) if (list.length) { const m = make(list, glowMat); m.receiveShadow = true; meshes.push(m); }
+  for (const list of shine) if (list.length) meshes.push(make(list, shineMat));
   for (const m of meshes) m.computeBoundingSphere();
   return meshes;
 }
@@ -1290,24 +1578,36 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   // (the institute on its own grid, turned; its pillars reach down to the Parc's ground beneath them)
   const [ic, is] = [Math.cos(I2.turn), Math.sin(I2.turn)];
   const underI2 = (x, z) => { const dx = x + 0.5 - 32, dz = z + 0.5 - 20; return siteH(Math.floor(I2.cx + dx * ic + dz * is), Math.floor(I2.cz - dx * is + dz * ic)); };
-  const city = buildTools(lineages), port = buildSagunto(lineages), parc = buildPaterna(), inst = buildI2(underI2);
+  const city = buildTools(lineages), port = buildSagunto(lineages), parc = buildPaterna(), inst = buildI2(underI2), lab = buildLab(lineages);
   const SAG = 84, PAT = -84;                                                       // where their boards begin, along x
   const O = (x, y, z) => new THREE.Vector3(x - city.W / 2, y, z - city.D / 2);   // city blocks to scene
   const scene = new THREE.Scene();
-  const solidMat = new THREE.MeshLambertMaterial(), glowMat = new THREE.MeshLambertMaterial({ emissive: 0x000000 });
+  // all that is outside, and the lab inside I2SysBio, which takes the Parc's place while you are in it
+  const world = new THREE.Group(), indoors = new THREE.Group();
+  indoors.visible = false;
+  scene.add(world, indoors);
+  const solidMat = new THREE.MeshLambertMaterial(), glowMat = new THREE.MeshLambertMaterial({ emissive: 0x000000 }), shineMat = new THREE.MeshBasicMaterial();
   const boards = [[city, 0, 'tools'], [port, SAG, 'sagunto'], [parc, PAT, 'paterna']].map(([c, dx, name]) => {
     const parts = meshesOf(c, solidMat, glowMat);
-    for (const m of parts) { m.position.x = dx; scene.add(m); }
+    for (const m of parts) { m.position.x = dx; world.add(m); }
     return { name, dx, meshes: parts, anchors: anchorsOf(c, dx) };
   });
+  const instParts = meshesOf(inst, solidMat, glowMat, 1);
   {
-    const parts = meshesOf(inst, solidMat, glowMat, 1), at = O(PAT + I2.cx / 2, 0, I2.cz / 2);
-    for (const m of parts) { m.position.copy(at); m.rotation.y = I2.turn; m.updateMatrixWorld(); scene.add(m); }
+    const at = O(PAT + I2.cx / 2, 0, I2.cz / 2);
+    for (const m of instParts) { m.position.copy(at); m.rotation.y = I2.turn; m.updateMatrixWorld(); world.add(m); }
     const anchors = anchorsOf(inst);
-    for (const k in anchors) anchors[k].applyMatrix4(parts[0].matrixWorld);
-    boards.push({ name: 'paterna', meshes: parts, anchors });
+    for (const k in anchors) anchors[k].applyMatrix4(instParts[0].matrixWorld);
+    boards.push({ name: 'paterna', meshes: instParts, anchors });
   }
-  const meshes = boards.flatMap(b => b.meshes);
+  const outside = boards.flatMap(b => b.meshes);
+  // the lab: what stands in it, and each of its walls apart, to drop when it comes between you and the floor
+  const labAt = (list, strips) => meshesOf({ ...lab, list }, solidMat, glowMat, strips, shineMat).map(m => { m.position.x = PAT; indoors.add(m); return m; });
+  const labStands = labAt(lab.list.filter(v => !v.part), 4);
+  const labWalls = Object.values(LAB_WALLS).map(([k, nx, nz]) => ({ nx, nz, meshes: labAt(lab.list.filter(v => v.part === k), 1) }));
+  const inside = [...labStands, ...labWalls.flatMap(w => w.meshes)];
+  boards.push({ name: 'lab', meshes: inside, anchors: anchorsOf(lab, PAT) });
+  const meshes = [...outside, ...inside];
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.25);
   const sun = new THREE.DirectionalLight(0xffffff, 1.9);
   sun.position.set(-30, 60, 25);
@@ -1323,14 +1623,14 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   const RUN = { red: [3, 0.07], blue: [3, 0.08], green: [3, 0.075], ochre: [2, 0.045], plum: [2, 0.05] };
   const trains = Object.entries(city.routes).map(([line, { route, lo, hi }], i) => {
     const [n, speed] = RUN[line] || [3, 0.07], length = n * CAR - 0.3;
-    const cars = Array.from({ length: n }, (_, k) => { const c = carOf(LINES[line], k === 0, k === n - 1, carBody, carLit); scene.add(c); return c; });
+    const cars = Array.from({ length: n }, (_, k) => { const c = carOf(LINES[line], k === 0, k === n - 1, carBody, carLit); world.add(c); return c; });
     return { line, cars, route, lo, hi, length, far: hi - lo - length, head: lo + length + (i * 7) % Math.max(1, hi - lo - length), dir: 1, speed, wait: 0 };
   });
   // the reads, running down the cables from the sequencer to the station
   const reads = [];
-  BASES.forEach((c, i) => { for (let k = 0; k < 2; k++) { const m = cube(0.45, 0.45, 0.45, lambert(c, { emissive: c, emissiveIntensity: 0 })); scene.add(m); reads.push({ m, z: 21.25 + i * 2, s: k * 2.5 + i * 0.7 }); } });
+  BASES.forEach((c, i) => { for (let k = 0; k < 2; k++) { const m = cube(0.45, 0.45, 0.45, lambert(c, { emissive: c, emissiveIntensity: 0 })); world.add(m); reads.push({ m, z: 21.25 + i * 2, s: k * 2.5 + i * 0.7 }); } });
   // smoke from the codon factory
-  const smoke = [0, 1, 2, 3, 4].map(i => { const m = cube(0.9, 0.9, 0.9, lambert('#F4F2EC', { transparent: true, opacity: 0.9 })); m.castShadow = false; scene.add(m); return { m, s: i / 5 }; });
+  const smoke = [0, 1, 2, 3, 4].map(i => { const m = cube(0.9, 0.9, 0.9, lambert('#F4F2EC', { transparent: true, opacity: 0.9 })); m.castShadow = false; world.add(m); return { m, s: i / 5 }; });
   // the scales of eskaks, weighing one against the other
   const scales = new THREE.Group();
   scales.position.copy(O(56, 12.4, 14));
@@ -1343,23 +1643,23 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   panL.add(pan([[P.red, 0, -0.97]]));
   panR.add(pan([[P.green, -0.35, -0.97], [P.green, 0.35, -0.97], [P.green, 0, -0.37]]));
   scales.add(panL, panR);
-  scene.add(scales);
+  world.add(scales);
   // the bridge of the crane in the snpick yard: trucks on the rails, a trolley, a grab with a base in it
   const bridge = boxesOf([[11, 0.5, 0.8, 0, 0, 0, P.ochre], [11, 0.1, 0.84, 0, 0.3, 0, shade(P.ochre, 0.82)], [0.9, 0.45, 1.3, -5.1, 0.05, 0, P.dark], [0.9, 0.45, 1.3, 5.1, 0.05, 0, P.dark],
     [1.3, 0.6, 1.1, 0.4, 0.55, 0, P.red], [0.1, 2.1, 0.1, 0.4, -1.3, 0, P.black], [0.9, 0.3, 0.9, 0.4, -2.45, 0, P.dark], [0.1, 0.4, 0.8, 0, -2.75, 0, P.dark], [0.1, 0.4, 0.8, 0.8, -2.75, 0, P.dark],
     [0.5, 0.5, 0.5, 0.4, -2.85, 0, BASES[2]]], new THREE.MeshLambertMaterial(vc));
-  scene.add(bridge);
+  world.add(bridge);
   // koi in the pond, their backs just out of the water
   const koi = [0, 1, 2].map(i => {
     const a = i === 1 ? '#F4F1EA' : '#F08A3C', b = i === 1 ? '#F08A3C' : '#F4F1EA';
     const g = boxesOf([[1.1, 0.22, 0.5, 0, 0, 0, a], [0.4, 0.23, 0.52, 0.2, 0.01, 0, b], [0.35, 0.16, 0.62, -0.72, 0, 0, a], [0.2, 0.1, 0.2, 0.62, 0.06, 0, b]], new THREE.MeshLambertMaterial(vc));
     g.castShadow = false;
-    scene.add(g);
+    world.add(g);
     return { g, a: i * 2.1, r: 1.6 + i * 0.6 };
   });
   // the lighthouse lamp, seen between the posts of its lantern, and at night its beam sweeping round
   const lampMat = lambert('#FFE38A', { emissive: '#FFD04D', emissiveIntensity: 0.4 });
-  const lamp = cube(1.7, 1.5, 1.7, lampMat); lamp.position.copy(O(city.lighthouse.x + 0.5, 17.5, city.lighthouse.z + 0.5)); scene.add(lamp);
+  const lamp = cube(1.7, 1.5, 1.7, lampMat); lamp.position.copy(O(city.lighthouse.x + 0.5, 17.5, city.lighthouse.z + 0.5)); world.add(lamp);
   const rayMat = new THREE.MeshBasicMaterial({ color: '#FFF1A8', transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
   const beam = new THREE.Group();
   beam.position.copy(lamp.position);
@@ -1368,17 +1668,41 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     ray.rotation.z = -s * Math.PI / 2; ray.position.x = s * 4.9;
     beam.add(ray);
   }
-  scene.add(beam);
+  world.add(beam);
 
   // ---- the yellow bus to Sagunt and the tram to Paterna: each waits at its stop in Valencia, and
   // takes you over a bridge to the other city with the view behind it ----
-  for (const [x0, x1] of [[74, SAG], [PAT + 74, 0]]) { const d = bridgeOf(x0, x1, 46, 48, new THREE.MeshLambertMaterial(vc)); d.position.copy(O(0, 0, 0)); scene.add(d); }
-  const wire = wireOf(PAT + 25, 22.5, 47, [PAT + 77, PAT + 81], new THREE.MeshLambertMaterial(vc)); wire.position.copy(O(0, 0, 0)); scene.add(wire);
+  for (const [x0, x1] of [[74, SAG], [PAT + 74, 0]]) { const d = bridgeOf(x0, x1, 46, 48, new THREE.MeshLambertMaterial(vc)); d.position.copy(O(0, 0, 0)); world.add(d); }
+  const wire = wireOf(PAT + 25, 22.5, 47, [PAT + 77, PAT + 81], new THREE.MeshLambertMaterial(vc)); wire.position.copy(O(0, 0, 0)); world.add(wire);
   const bus = busOf(carBody, carLit), tram = tramOf(carBody, carLit);
   bus.userData.vehicle = 'bus';
-  scene.add(bus, ...tram);
+  world.add(bus, ...tram);
+  // someone in the lab, carrying a rack of tubes from the cabinets down to the coffee and back: in
+  // blocks across (a, from the left), up (y) and from the back (f), centred on them; the legs swing
+  // from the hip
+  const labPt = (x, z) => [PAT + (x + 0.5) / lab.S - lab.W / 2, (z + 0.5) / lab.S - lab.D / 2];
+  const walkWay = pathOf(labPt(109, 11), [['to', ...labPt(109, 50)], ['to', ...labPt(126, 52)]]);
+  const walker = new THREE.Group(), strides = [];
+  {
+    const B = 1 / lab.S, coat = '#F6F6F2', skin = '#E8B990', hair = '#1E1B1A', dark = '#2B2522';
+    const box = (a, y, f, w, h, d, c, y0 = 0) => [w * B, h * B, d * B, (a + w / 2 - 2) * B, (y + h / 2 - y0) * B, (f + d / 2 - 1) * B, c];
+    walker.add(boxesOf([
+      box(0, 4, 0, 4, 5, 2, coat), box(1, 8, 1.9, 2, 1, 0.2, '#5B7A99'),
+      box(0, 9, 0, 4, 1, 2, skin), box(0, 10, 1, 4, 1, 1, skin), box(0, 10, 0, 4, 1, 1, hair), box(0, 11, 0, 4, 2, 2, hair), box(1, 10, 1.95, 1, 1, 0.1, dark), box(2, 10, 1.95, 1, 1, 0.1, dark),
+      box(-1, 7, 0, 1, 2, 2, coat), box(4, 7, 0, 1, 2, 2, coat), box(-1, 7, 2, 1, 1, 1, coat), box(4, 7, 2, 1, 1, 1, coat), box(-1, 7, 3, 1, 1, 1, skin), box(4, 7, 3, 1, 1, 1, skin),
+      box(0, 7, 2.5, 4, 1, 2, '#F4F4F0'), ...BASES.map((c, i) => box(i, 8, 3, 1, 1, 1, c)),
+    ], carBody));
+    for (const a of [0, 2]) {
+      const hip = new THREE.Group();
+      hip.position.set((a + 1 - 2) * B, 4 * B, 0);
+      hip.add(boxesOf([box(1, 1, 0, 2, 3, 2, '#3B4F73', 4), box(1, 0, 0, 2, 1, 2, '#2A2D33', 4)], carBody));
+      walker.add(hip); strides.push(hip);
+    }
+    indoors.add(walker);
+  }
+  const wk = { u: 0, dir: 1, wait: 40 };
   const signArt = signCanvas(), sign = signOf(signArt);
-  sign.position.copy(O(PAT + I2.sign[0] / 2, (siteH(...I2.sign) + 1) / 2 + 1.35, I2.sign[1] / 2)); sign.rotation.set(-0.3, I2.turn, 0, 'YXZ'); scene.add(sign);
+  sign.position.copy(O(PAT + I2.sign[0] / 2, (siteH(...I2.sign) + 1) / 2 + 1.35, I2.sign[1] / 2)); sign.rotation.set(-0.3, I2.turn, 0, 'YXZ'); world.add(sign);
   // the ways: the bus to Sagunt past the roundabout at its port and back past the one by the
   // market; the tram, with a cab at each end, straight there and back
   const TRIPS = {
@@ -1387,7 +1711,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     'tools>paterna': { by: 'tram', road: pathOf([14.5, 47], [['to', PAT + 37, 47]]) },
     'paterna>tools': { by: 'tram', road: pathOf([PAT + 42.6, 47], [['to', 20.1, 47]]) },
   };
-  const CENTRE = { tools: 0, sagunto: SAG, paterna: PAT };
+  const CENTRE = { tools: 0, sagunto: SAG, paterna: PAT, lab: PAT };
   const trip = { leg: null, from: 'tools', to: 'tools', next: null, u: 0, on: false, speed: 0.75 };
   // a vehicle `u` along a way: the bus on its two axles, the tram's cars on their bogies behind its front
   function park(by, road, u) {
@@ -1406,8 +1730,9 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   // each waits at the start of its way out of the city in view
   function rest() {
-    park('bus', TRIPS[view.city === 'sagunto' ? 'sagunto>tools' : 'tools>sagunto'].road, 0);
-    park('tram', TRIPS[view.city === 'paterna' ? 'paterna>tools' : 'tools>paterna'].road, 0);
+    const here = view.city === 'lab' ? 'paterna' : view.city;
+    park('bus', TRIPS[here === 'sagunto' ? 'sagunto>tools' : 'tools>sagunto'].road, 0);
+    park('tram', TRIPS[here === 'paterna' ? 'paterna>tools' : 'tools>paterna'].road, 0);
   }
 
   // ---- the view ----
@@ -1416,8 +1741,9 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   // the ground to straight above
   const PITCH = [0.1, 1.54];
   const tilted = (p) => Math.max(PITCH[0], Math.min(PITCH[1], p));
-  // cx is where it looks along x: the middle of the city in view, or the bus on its way
-  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null, cx: 0, cxGoal: null, city: 'tools' };
+  // cx is where it looks along x: the middle of the city in view, or the bus on its way; cy and cz
+  // move only to go in at a door, and zoom closes in on it
+  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null, cx: 0, cxGoal: null, cy: 3, cz: 1, zoom: 1, city: 'tools' };
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
@@ -1445,7 +1771,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function fit() {
     const [lo, hi] = PITCH, mid = Math.atan(0.72);
     const k = view.pitch < mid ? 0.88 + 0.12 * (view.pitch - lo) / (mid - lo) : 1 + 0.45 * (view.pitch - mid) / (hi - mid);
-    const halfW = (compact ? 43 : 42) * k, aspect = cssW / cssH;
+    const halfW = (compact ? 43 : 42) * k / view.zoom, aspect = cssW / cssH;
     if (camera.right === halfW && camera.top === halfW / aspect) return;
     camera.left = -halfW; camera.right = halfW; camera.top = halfW / aspect; camera.bottom = -halfW / aspect;
     camera.updateProjectionMatrix();
@@ -1453,11 +1779,14 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function place() {
     fit();
     const r = 120;
-    camera.position.set(view.cx + Math.sin(view.yaw) * Math.cos(view.pitch) * r, Math.sin(view.pitch) * r + 3, Math.cos(view.yaw) * Math.cos(view.pitch) * r + 1);
-    camera.lookAt(view.cx, 3, 1);
+    const dx = Math.sin(view.yaw), dz = Math.cos(view.yaw);
+    camera.position.set(view.cx + dx * Math.cos(view.pitch) * r, view.cy + Math.sin(view.pitch) * r, view.cz + dz * Math.cos(view.pitch) * r);
+    camera.lookAt(view.cx, view.cy, view.cz);
     camera.updateMatrixWorld();
     // the sun, and so its shadows, go where the view goes
     sun.position.set(view.cx - 30, 60, 25); sun.target.position.set(view.cx, 0, 0); sun.target.updateMatrixWorld();
+    // in the lab, a wall that stands between you and its floor drops to its skirting
+    for (const w of labWalls) { const up = w.nx * dx + w.nz * dz <= 0.02; for (const m of w.meshes) m.visible = up; }
   }
 
   // ---- labels over the buildings, and their tickets ----
@@ -1474,13 +1803,17 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   });
   // only the names of the city in view show, none on the way
   function showCity() {
-    for (const l of tags.values()) l.el.hidden = trip.on || l.city !== view.city;
+    for (const l of tags.values()) l.el.hidden = trip.on || glide.on || l.city !== view.city;
     for (const [name, svg] of Object.entries(maps)) svg.toggleAttribute('hidden', name !== view.city);
-    // the bus goes between Valencia and Sagunt, the tram between Valencia and Paterna
+    // the bus goes between Valencia and Sagunt, the tram between Valencia and Paterna; in Paterna
+    // I2SysBio's door opens, and in the lab it takes you back out
     const say = (el, text) => { el.setAttribute('aria-label', text); el.title = text; };
-    busButton.hidden = view.city === 'paterna'; tramButton.hidden = view.city === 'sagunto';
+    const inLab = view.city === 'lab';
+    busButton.hidden = view.city === 'paterna' || inLab; tramButton.hidden = view.city === 'sagunto' || inLab;
+    doorButton.hidden = view.city !== 'paterna' && !inLab;
     say(busButton, view.city === 'sagunto' ? 'Take the yellow bus back to Valencia' : 'Take the yellow bus to Sagunt, where my papers are');
     say(tramButton, view.city === 'paterna' ? 'Take the tram back to Valencia' : 'Take the tram to Paterna, where I work');
+    say(doorButton, inLab ? 'Back outside, to the Parc Científic' : 'Step inside I2SysBio, into the lab');
     dirty = true;
   }
   const card = document.createElement('div');
@@ -1498,13 +1831,15 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       + (t.title ? `<p class="city-ticket-title">${esc(t.title)}</p>` : '')
       + (t.art === 'sign' ? `<img class="city-ticket-art" src="${signArt.toDataURL()}" width="${signArt.width}" height="${signArt.height}" alt="The I2SysBio sign on its lawn: i2sysbio in teal, with the University of Valencia and CSIC">` : '')
       + `<p class="city-ticket-desc">${esc(t.desc)}</p>`
-      + (t.links && t.links.length ? `<p class="city-ticket-links">${t.links.map(k => `<a href="${esc(k.href)}" target="_blank" rel="noopener">${esc(k.label)}</a>`).join('')}</p>` : '');
+      + (t.links && t.links.length ? `<p class="city-ticket-links">${t.links.map(k => (k.go ? `<button type="button" class="city-ticket-go" data-go="${esc(k.go)}">${esc(k.label)}</button>`
+        : `<a href="${esc(k.href)}" target="_blank" rel="noopener">${esc(k.label)}</a>`)).join('')}</p>` : '');
     card.className = `city-ticket city-ticket--${l.line || 'none'}`;
     card.hidden = false;
     card.querySelector('.city-ticket-x').addEventListener('click', close);
+    card.querySelectorAll('.city-ticket-go').forEach(g => g.addEventListener('click', () => go(g.dataset.go, true)));
     placeTicket();
     onPick && onPick(tag);
-    const first = card.querySelector('a');
+    const first = card.querySelector('.city-ticket-links a, .city-ticket-go');
     if (first && document.activeElement === l.el) first.focus();
   }
   function close() { card.hidden = true; shown = ''; }
@@ -1560,20 +1895,24 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects([...meshes, bus, ...tram, sign], true)[0];
+    const hit = ray.intersectObjects(view.city === 'lab' ? inside.filter(m => m.visible) : [...outside, bus, ...tram, sign], true)[0];
     let o = hit && !hit.object.isInstancedMesh ? hit.object : null;
     while (o && !o.userData.vehicle && !o.userData.tag) o = o.parent;
     if (o && o.userData.vehicle) return o.userData.vehicle;
     const t = o ? o.userData.tag : hit ? hit.object.userData.tags[hit.instanceId] : '';
+    // the institute's own walls are the way in, the lab's door the way out (its sign, and its name, give its ticket)
+    if (!o && t === 'i2sysbio' && view.city === 'paterna') return 'in';
+    if (t === 'out' && view.city === 'lab') return 'out';
     return tags.has(t) && tags.get(t).city === view.city ? t : '';
   }
+  const shows = (t) => (t === 'in' ? 'i2sysbio' : t);
   // dragging sideways turns the city, and with a mouse up and down tilts it (on a
   // touch screen that scrolls the page, so the arrows tilt it); a tap without a
   // drag opens a ticket
   let drag = null;
   canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: view.yaw, pitch: view.pitch, moved: false, id: e.pointerId, mouse: e.pointerType !== 'touch' }; });
   canvas.addEventListener('pointermove', (e) => {
-    if (!drag) { light(pick(e)); return; }
+    if (!drag) { if (!glide.on) light(shows(pick(e))); return; }
     const dx = e.clientX - drag.x, dy = drag.mouse ? e.clientY - drag.y : 0;
     if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) { drag.moved = true; canvas.setPointerCapture(drag.id); }
     if (!drag.moved) return;
@@ -1581,7 +1920,12 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     if (drag.mouse) { view.pitch = tilted(drag.pitch + dy * 0.006); view.pitchGoal = null; }
     dirty = true;
   });
-  canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t === 'bus' || t === 'tram') board(t); else if (t) open(t); else close(); } });
+  canvas.addEventListener('pointerup', (e) => {
+    const was = drag; drag = null;
+    if (!was || was.moved || glide.on) return;
+    const t = pick(e);
+    if (t === 'bus' || t === 'tram') board(t); else if (t === 'in') enter(); else if (t === 'out') leave(); else if (t) open(t); else close();
+  });
   canvas.addEventListener('pointercancel', () => { drag = null; });
   canvas.addEventListener('pointerleave', () => { if (!drag) light(''); });
   // the arrows turn it a quarter at a time
@@ -1609,13 +1953,21 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   tramButton.innerHTML = '<svg viewBox="0 0 16 12" aria-hidden="true"><path d="M6 2 L8 0.4 L10 2" fill="none" stroke="currentColor" stroke-width="1"/><rect x="1" y="2" width="14" height="7" rx="1.8" fill="#F4F4F0" stroke="currentColor" stroke-width="1.2"/><rect x="11.4" y="2.6" width="3" height="5.8" rx="1.2" fill="#D2232A"/><rect x="2.4" y="3.6" width="8" height="2.2" fill="currentColor"/><rect x="1.6" y="7" width="9.8" height="1" fill="#D2232A"/><circle cx="4.5" cy="10" r="1.3" fill="currentColor"/><circle cx="11.5" cy="10" r="1.3" fill="currentColor"/></svg>';
   tramButton.addEventListener('click', () => board('tram'));
   arrows.appendChild(tramButton);
+  // and I2SysBio's door, in and out
+  const doorButton = document.createElement('button');
+  doorButton.type = 'button';
+  doorButton.className = 'city-door';
+  doorButton.innerHTML = '<svg viewBox="0 0 16 12" aria-hidden="true"><rect x="3.5" y="0.8" width="9" height="10.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 11.4 V2.2 L10.6 3.2 V11.4 Z" fill="#1E98AC" stroke="currentColor" stroke-width="1"/><circle cx="9.2" cy="7.2" r="0.8" fill="currentColor"/></svg>';
+  doorButton.addEventListener('click', () => go(view.city === 'lab' ? 'out' : 'lab'));
+  arrows.appendChild(doorButton);
   stage.appendChild(arrows);
   // on the bus or the tram: out of Valencia, or back
   const board = (by) => ride(view.city === 'tools' ? (by === 'bus' ? 'sagunto' : 'paterna') : 'tools');
   // a ride: the vehicle drives its way with the view behind it (between Sagunt and Paterna, by way of
   // Valencia); with motion off, you are simply there
   function ride(to) {
-    if (trip.on) return;
+    if (trip.on || glide.on) return;
+    if (view.city === 'lab') { leave(() => ride(to)); return; }
     const from = view.city;
     to = to || (from === 'tools' ? 'sagunto' : 'tools');
     if (to === from) return;
@@ -1634,6 +1986,42 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     view.cxGoal = CENTRE[view.city];
     showCity();
     if (trip.next) { const next = trip.next; trip.next = null; setTimeout(() => ride(next), 300); }
+  }
+
+  // ---- in at I2SysBio's door and back out: the view closes in on the door, the lab takes the Parc's
+  // place and the view draws back from the lab's own door to its whole floor; out, the same the other
+  // way. With motion off, you are simply there ----
+  const toDoor = new THREE.Vector3((10 + 0.5) / 2 - inst.W / 2, (TOP + 4) / 2, 33 / 2 - inst.D / 2).applyMatrix4(instParts[0].matrixWorld);
+  const labDoor = new THREE.Vector3(PAT + 1 / lab.S - lab.W / 2, 3.5, 68 / lab.S - lab.D / 2);
+  const WHOLE = { cx: PAT, cy: 3, cz: 1, zoom: 1 }, CLOSE = 3.4;
+  const glide = { on: false, t: 0, from: null, to: null, fade: '', then: null, pace: 1 };
+  function glideTo(to, fade, then) {
+    Object.assign(glide, { on: true, t: 0, from: { cx: view.cx, cy: view.cy, cz: view.cz, zoom: view.zoom }, to, fade, then });
+    view.cxGoal = null; dirty = true;
+  }
+  const onDoor = (p) => ({ cx: p.x, cy: p.y, cz: p.z, zoom: CLOSE });
+  function through(inward, then) {
+    const [from, to] = inward ? [toDoor, labDoor] : [labDoor, toDoor];
+    close(); light('');
+    const swap = () => {
+      indoors.visible = inward; world.visible = !inward;
+      view.city = inward ? 'lab' : 'paterna';
+      if (!inward) rest();
+    };
+    if (typeof animSpeed === 'number' && animSpeed <= 0) { swap(); Object.assign(view, WHOLE); view.cxGoal = null; showCity(); then && then(); return; }
+    glideTo(onDoor(from), 'out', () => { swap(); Object.assign(view, onDoor(to)); glideTo(WHOLE, 'in', () => { showCity(); then && then(); }); showCity(); });
+    showCity();
+  }
+  function enter(then) { if (!trip.on && !glide.on && view.city === 'paterna') through(true, then); }
+  function leave(then) { if (!trip.on && !glide.on && view.city === 'lab') through(false, then); }
+  // where a ticket, the map or a button sends you; from a ticket, the keyboard goes on to the first
+  // name of the place it arrives at
+  function go(place, fromTicket = false) {
+    const onward = fromTicket && card.contains(document.activeElement)
+      ? () => { const first = [...tags.values()].find(l => l.city === view.city && !l.el.hidden); first && first.el.focus({ preventScroll: true }); } : null;
+    if (place === 'lab') enter(onward);
+    else if (place === 'out') leave(onward);
+    else ride(place);
   }
 
   // ---- the map of the lines, in a corner: the same city without buildings ----
@@ -1679,9 +2067,22 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     <g class="city-map-tram" data-go="tools"><title>the tram back to Valencia</title><path d="M96 124 H246" stroke="#2C4A9A"/><rect x="100" y="119" width="46" height="10" rx="2" class="city-map-platform"/><rect x="246" y="117" width="42" height="14" rx="7"/><text x="267" y="127" text-anchor="middle">Valencia</text></g>
     ${stop('i2sysbio', 130, 50, 'I2SysBio', true)}${stop('xarxa', 176, 86, 'researchers map', true)}
     <text class="city-map-town" x="14" y="16">Parc Cientific, Paterna</text><text class="city-map-town" x="150" y="114">Santa Gemma</text>
+  </svg>
+  <svg class="city-map-lab" viewBox="0 0 292 140" role="presentation">
+    <rect class="city-map-room" x="46" y="5" width="204" height="131" rx="1.5"/>
+    <path class="city-map-glass" d="M47 5 H184 M250 12 V128"/>
+    <g class="city-map-bench"><rect x="58" y="6" width="126" height="6"/><rect x="192" y="6" width="15" height="8"/><rect x="210" y="6" width="15" height="8"/><rect x="228" y="6" width="15" height="8"/>
+      <rect x="47" y="16" width="9" height="46"/><rect x="93" y="21" width="15" height="47"/><rect x="131" y="21" width="15" height="47"/><rect x="170" y="21" width="15" height="47"/><rect x="209" y="21" width="15" height="47"/>
+      <rect x="87" y="75" width="44" height="4"/><rect x="235" y="84" width="13" height="18"/>
+      <rect x="87" y="84" width="22" height="8"/><rect x="123" y="84" width="22" height="8"/><rect x="159" y="84" width="22" height="8"/><rect x="195" y="84" width="22" height="8"/>
+      <rect x="87" y="109" width="22" height="8"/><rect x="123" y="109" width="22" height="8"/><rect x="159" y="109" width="22" height="8"/><rect x="195" y="109" width="22" height="8"/></g>
+    <path class="city-map-gap" d="M46 92 V103"/>
+    <g class="city-map-door" data-go="out"><title>back outside</title><rect x="2" y="90" width="42" height="14" rx="7"/><text x="23" y="100" text-anchor="middle">outside</text></g>
+    ${stop('pgl', 138, 45, 'the lab', true)}${stop('desk', 134, 112, 'my desk')}
+    <text class="city-map-town" x="192" y="25">cabinets</text><text class="city-map-town" x="224" y="80">coffee</text>
   </svg>`;
-  const maps = { tools: map.querySelector('.city-map-tools'), sagunto: map.querySelector('.city-map-sagunto'), paterna: map.querySelector('.city-map-paterna') };
-  map.querySelectorAll('.city-map-bus, .city-map-tram').forEach(g => g.addEventListener('click', (e) => { e.stopPropagation(); ride(g.dataset.go); }));
+  const maps = { tools: map.querySelector('.city-map-tools'), sagunto: map.querySelector('.city-map-sagunto'), paterna: map.querySelector('.city-map-paterna'), lab: map.querySelector('.city-map-lab') };
+  map.querySelectorAll('.city-map-bus, .city-map-tram, .city-map-door').forEach(g => g.addEventListener('click', (e) => { e.stopPropagation(); go(g.dataset.go); }));
   stage.appendChild(map);
   map.querySelectorAll('.city-map-stop').forEach(g => {
     const tag = g.dataset.tag;
@@ -1758,6 +2159,17 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     koi.forEach(q => { const a = q.a + t * 0.02; at(48.5 + Math.cos(a) * q.r * 1.5, -0.45, 41.5 + Math.sin(a) * q.r, q.g); q.g.rotation.y = -a; });
     lampMat.emissiveIntensity = 0.35 + 0.35 * (0.5 + 0.5 * Math.sin(t * 0.08));
     beam.rotation.y = t * 0.012;
+    // in the lab, the one walking: along the way, a pause at each end, and back
+    if (wk.wait > 0) wk.wait -= dt * k;
+    else {
+      wk.u += wk.dir * 0.035 * dt * k;
+      if (wk.u >= walkWay.L) { wk.u = walkWay.L; wk.dir = -1; wk.wait = 90; }
+      if (wk.u <= 0) { wk.u = 0; wk.dir = 1; wk.wait = 90; }
+    }
+    const [wx, wz] = pointOn(walkWay, wk.u), [ax, az] = pointOn(walkWay, wk.u + wk.dir * 0.3), step = wk.wait > 0 ? 0 : Math.sin(wk.u * 6);
+    walker.position.set(wx, Math.abs(step) * 0.05, wz);
+    walker.rotation.y = Math.atan2(ax - wx, az - wz);
+    strides[0].rotation.x = step * 0.45; strides[1].rotation.x = -step * 0.45;
   }
   function frame(ts) {
     requestAnimationFrame(frame);
@@ -1790,6 +2202,20 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       if (trip.u >= L) arrive();
       dirty = true;
     }
+    if (glide.on) {
+      glide.t = Math.min(1, glide.t + ds / 40 * glide.pace);
+      const e = glide.t * glide.t * (3 - 2 * glide.t), { from, to } = glide;
+      view.cx = from.cx + (to.cx - from.cx) * e; view.cy = from.cy + (to.cy - from.cy) * e; view.cz = from.cz + (to.cz - from.cz) * e;
+      view.zoom = from.zoom * (to.zoom / from.zoom) ** e;
+      canvas.style.opacity = String(Math.min(1, glide.fade === 'out' ? (1 - glide.t) / 0.3 : glide.t / 0.3));
+      dirty = true;
+      if (glide.t >= 1) {
+        const then = glide.then;
+        glide.on = false; Object.assign(view, glide.to);
+        then && then();
+        if (!glide.on) canvas.style.opacity = '';
+      }
+    }
     if (view.cxGoal !== null) {
       const d = view.cxGoal - view.cx;
       view.cx += Math.abs(d) < 0.02 ? d : d * Math.min(1, 0.09 * ds);
@@ -1808,5 +2234,18 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   resize(); theme(); rest(); showCity(); place(); move(0, 0);
   requestAnimationFrame(frame);
   // for the page's own tests: the clock the moving things keep, the ride, the city in view
-  return { tags, view, open, close, light, ride, trip, redraw: () => { dirty = true; }, get clock() { return t; }, get riding() { return trip.on; } };
+  // and where on the stage a building is: the middle of its blocks, in the place in view
+  function where(tag) {
+    const sum = new THREE.Vector3(), p = new THREE.Vector3(), m = new THREE.Matrix4();
+    let n = 0;
+    for (const mesh of view.city === 'lab' ? inside : outside) mesh.userData.tags.forEach((t, i) => { if (t === tag) { mesh.getMatrixAt(i, m); sum.add(p.setFromMatrixPosition(m).applyMatrix4(mesh.matrixWorld)); n++; } });
+    if (!n) return null;
+    sum.divideScalar(n).project(camera);
+    return { x: (sum.x + 1) / 2 * cssW, y: (1 - sum.y) / 2 * cssH };
+  }
+  return {
+    tags, view, open, close, light, ride, trip, enter, leave, go, where, redraw: () => { dirty = true; },
+    get clock() { return t; }, get riding() { return trip.on; }, get gliding() { return glide.on; }, door: glide,
+    get walls() { return labWalls.map(w => w.meshes.every(m => m.visible)); },
+  };
 }

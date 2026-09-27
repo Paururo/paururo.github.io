@@ -240,8 +240,13 @@ const SAGUNTO_STOPS = [
 ];
 // Paterna, past the bridge the other way, by tram: the Parc Cientific and I2SysBio, where I work.
 const PATERNA_STOPS = [
-  { tag: 'i2sysbio', name: 'I2SysBio', line: 'tram', sub: 'where I work' },
+  { tag: 'i2sysbio', name: 'I2SysBio', line: 'tram', sub: 'where I work, step inside' },
   { tag: 'xarxa', name: 'Researchers map', line: 'tram', sub: 'who works with whom' },
+];
+// Inside I2SysBio, through its door: the lab I work in, and my desk in it.
+const LAB_STOPS = [
+  { tag: 'pgl', name: 'PathoGenOmics Lab', line: 'lab', sub: 'the group I work in' },
+  { tag: 'desk', name: 'my desk', line: 'lab', sub: 'in thesis mode' },
 ];
 
 const MYCOLORS_TB = {
