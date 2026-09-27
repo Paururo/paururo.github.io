@@ -748,6 +748,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label::before { content: ''; width: 10px; height: 4px; border-radius: 2px; margin-bottom: 2px; background: var(--c, transparent); }
 .city-label small { display: none; font-size: 10.5px; font-weight: 400; color: var(--muted); }
 .city-label.lit, .city-label:focus-visible { z-index: 2; background: var(--note); }
+/* closer in, the name of a building out of the frame waits out of sight */
+.city-label.off { visibility: hidden; }
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
@@ -810,6 +812,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map .city-map-door text { fill: #FFFFFF; }
 .city-map-sea { fill: color-mix(in srgb, #4F9CC8 35%, var(--card)); }
 .city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.city-turn .city-zoom { font: 700 18px/1 var(--font-body); }
 .city-turn .city-bus, .city-turn .city-tram, .city-turn .city-door { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
 .city-turn .city-tram { background: #E6ECFA; }
 .city-turn .city-door { background: #DDF1F4; }
@@ -1336,11 +1339,13 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .print:nth-child(n) { transform: none; }
   .ruler-feature span { display: none; }
   .coco { right: 8px; }
-  .city-stage { aspect-ratio: 100 / 72; }
+  /* the buttons in a row under the city, where the map, the board and the coconut leave them alone */
+  .city-stage { aspect-ratio: 100 / 72; margin-bottom: 48px; }
+  .city-turn { top: calc(100% + 8px); left: 0; right: 0; justify-content: center; gap: 5px; }
+  .city-turn button { width: 38px; height: 36px; }
+  .city-turn .city-bus, .city-turn .city-tram, .city-turn .city-door { width: 42px; }
   .city-map { width: 132px; padding: 3px 4px 2px; }
   .city-map text { display: none; }
-  /* the arrows in a row, and under them the bus, the tram or the door, clear of the map */
-  .city-turn { flex-wrap: wrap; justify-content: flex-end; max-width: 146px; }
   .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
   .city-label { position: static; transform: none !important; }
   .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }
@@ -1714,9 +1719,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
-        <div class="city" id="toolCity" data-src="js/city.js?v=cb9b6cd900" hidden>
+        <div class="city" id="toolCity" data-src="js/city.js?v=66b05bf512" hidden>
           <div class="city-stage"></div>
-          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn and tilt &middot; the yellow bus goes to Sagunt, the tram to Paterna and my lab</p>
+          <p class="city-hint">press a building for its ticket &middot; drag to turn and tilt, pinch or + &minus; to zoom &middot; the yellow bus goes to Sagunt, the tram to Paterna and my lab</p>
           <div class="city-chips" id="cityChips"></div>
         </div>
         <button type="button" class="px-btn city-list-toggle" id="toolListToggle" aria-expanded="false" aria-controls="toolList">all tools and repositories, as a list</button>
