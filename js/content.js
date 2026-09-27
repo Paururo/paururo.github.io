@@ -222,7 +222,6 @@ const CITY_STOPS = [
   { tag: 'get_MNV', name: 'get_MNV', line: 'blue', sub: 'codons, together' },
   { tag: 'eskaks', name: 'eskaks', line: 'blue', sub: 'dN/dS, pN/pS' },
   { tag: 'snpick', name: 'snpick', line: 'green', sub: 'variable sites' },
-  { tag: 'IQ-TREE', name: 'IQ-TREE', line: 'ext', sub: 'the tree, not mine' },
   { tag: 'distree', name: 'distree', line: 'green', sub: 'tree distances' },
   { tag: 'fstic', name: 'fstic', line: 'ochre', sub: 'mixed infections' },
   { tag: 'mycolorsTB', name: 'mycolorsTB', line: 'plum', sub: 'lineage colours' },

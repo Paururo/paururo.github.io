@@ -732,6 +732,18 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
 .city-ticket-x { position: absolute; right: 6px; top: 3px; border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
 .city-turn { position: absolute; right: 6px; top: 6px; z-index: 2; display: flex; gap: 6px; }
+/* the map of the lines in a corner: the city without its buildings */
+.city-map {
+  position: absolute; left: 6px; top: 6px; z-index: 2; width: 318px; padding: 5px 8px 3px;
+  background: color-mix(in srgb, var(--card) 92%, transparent); border: 1.5px solid var(--ink); border-radius: 6px; box-shadow: 2px 2px 0 var(--ink);
+}
+.city-map svg { display: block; width: 100%; height: auto; overflow: visible; }
+.city-map text { font: 700 9px var(--font-body); fill: var(--ink); pointer-events: none; }
+.city-map-stop { cursor: pointer; }
+.city-map-stop circle, .city-map-stop rect { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
+.city-map-stop .city-map-term { fill: var(--ink); }
+.city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
+.city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
 .city-turn button { width: 32px; height: 30px; font-size: 17px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
@@ -1256,6 +1268,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .ruler-feature span { display: none; }
   .coco { right: 8px; }
   .city-stage { aspect-ratio: 100 / 72; }
+  .city-map { width: 132px; padding: 3px 4px 2px; }
+  .city-map text { display: none; }
   .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
   .city-label { position: static; transform: none !important; }
   .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }
