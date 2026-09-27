@@ -1742,8 +1742,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   const PITCH = [0.1, 1.54];
   const tilted = (p) => Math.max(PITCH[0], Math.min(PITCH[1], p));
   // cx is where it looks along x: the middle of the city in view, or the bus on its way; cy and cz
-  // move only to go in at a door, and zoom closes in on it
-  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null, cx: 0, cxGoal: null, cy: 3, cz: 1, zoom: 1, city: 'tools' };
+  // move to go in at a door; zoom is how close, and px, pz how far off the middle it looks, closer in
+  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null, cx: 0, cxGoal: null, cy: 3, cz: 1, zoom: 1, zoomGoal: null, px: 0, pz: 0, city: 'tools' };
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
@@ -1780,13 +1780,47 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     fit();
     const r = 120;
     const dx = Math.sin(view.yaw), dz = Math.cos(view.yaw);
-    camera.position.set(view.cx + dx * Math.cos(view.pitch) * r, view.cy + Math.sin(view.pitch) * r, view.cz + dz * Math.cos(view.pitch) * r);
-    camera.lookAt(view.cx, view.cy, view.cz);
+    const x = view.cx + view.px, z = view.cz + view.pz;
+    camera.position.set(x + dx * Math.cos(view.pitch) * r, view.cy + Math.sin(view.pitch) * r, z + dz * Math.cos(view.pitch) * r);
+    camera.lookAt(x, view.cy, z);
     camera.updateMatrixWorld();
     // the sun, and so its shadows, go where the view goes
-    sun.position.set(view.cx - 30, 60, 25); sun.target.position.set(view.cx, 0, 0); sun.target.updateMatrixWorld();
+    sun.position.set(x - 30, 60, 25); sun.target.position.set(x, 0, 0); sun.target.updateMatrixWorld();
     // in the lab, a wall that stands between you and its floor drops to its skirting
     for (const w of labWalls) { const up = w.nx * dx + w.nz * dz <= 0.02; for (const m of w.meshes) m.visible = up; }
+  }
+
+  // ---- closer: + and -, a pinch, ctrl and the wheel; closer in, the view moves over the ground
+  // with two fingers or the mouse, but never off the board ----
+  const ZOOM = [1, 4];
+  const zoomed = (z) => Math.max(ZOOM[0], Math.min(ZOOM[1], z));
+  const ground = () => { const s = Math.sin(view.yaw), c = Math.cos(view.yaw); return [c, -s, -s, -c]; };   // right, and away up the screen
+  function held() { const k = 1 - 1 / view.zoom; view.px = Math.max(-37 * k, Math.min(37 * k, view.px)); view.pz = Math.max(-24 * k, Math.min(24 * k, view.pz)); }
+  // how much ground a CSS pixel covers, across the screen and up it
+  const perPx = () => { fit(); const u = 2 * camera.right / Math.max(1, cssW); return [u, u / Math.max(0.2, Math.sin(view.pitch))]; };
+  // closer by s about a point (ox, oy) CSS pixels from the middle of the stage, which stays where it is
+  function zoomBy(s, ox = 0, oy = 0) {
+    if (trip.on || glide.on) return;
+    const z = zoomed(view.zoom * s);
+    if (z === view.zoom) return;
+    const [u, v] = perPx(), f = 1 - view.zoom / z, [rx, rz, fx, fz] = ground();
+    view.px += (rx * ox * u - fx * oy * v) * f; view.pz += (rz * ox * u - fz * oy * v) * f;
+    view.zoom = z; view.zoomGoal = null;
+    held(); dirty = true;
+  }
+  // the ground follows the fingers, or the mouse, across the screen
+  function panBy(dx, dy) {
+    if (trip.on || glide.on || view.zoom <= 1) return;
+    const [u, v] = perPx(), [rx, rz, fx, fz] = ground();
+    view.px += -rx * dx * u + fx * dy * v; view.pz += -rz * dx * u + fz * dy * v;
+    held(); dirty = true;
+  }
+  // the buttons, a step at a time (at once, with motion off)
+  function nearer(k) {
+    if (trip.on || glide.on) return;
+    const z = zoomed((view.zoomGoal ?? view.zoom) * k);
+    if (typeof animSpeed === 'number' && animSpeed <= 0) { view.zoom = z; view.zoomGoal = null; held(); } else view.zoomGoal = z;
+    dirty = true;
   }
 
   // ---- labels over the buildings, and their tickets ----
@@ -1838,6 +1872,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     card.querySelector('.city-ticket-x').addEventListener('click', close);
     card.querySelectorAll('.city-ticket-go').forEach(g => g.addEventListener('click', () => go(g.dataset.go, true)));
     placeTicket();
+    // on a phone it opens under the names, maybe below the screen: up it comes
+    if (compact) { const r = card.getBoundingClientRect(); if (r.bottom > innerHeight || r.top < 0) card.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
     onPick && onPick(tag);
     const first = card.querySelector('.city-ticket-links a, .city-ticket-go');
     if (first && document.activeElement === l.el) first.focus();
@@ -1857,10 +1893,11 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   const v = new THREE.Vector3();
   function placeLabels() {
-    if (compact) return;
+    if (compact) { for (const l of tags.values()) l.el.classList.remove('off'); return; }
     for (const l of tags.values()) {
       if (l.el.hidden) continue;
       v.copy(l.pos).project(camera);
+      l.el.classList.toggle('off', view.zoom > 1.01 && (Math.abs(v.x) > 1.02 || v.y < -1.02 || v.y > 1.12));
       // over its building, but never out of the city's frame
       const hw = l.el.offsetWidth / 2 + 2, hh = l.el.offsetHeight + 2;
       const x = Math.max(hw, Math.min(cssW - hw, (v.x + 1) / 2 * cssW)), y = Math.max(hh, Math.min(cssH - 2, (1 - v.y) / 2 * cssH));
@@ -1907,27 +1944,70 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   const shows = (t) => (t === 'in' ? 'i2sysbio' : t);
   // dragging sideways turns the city, and with a mouse up and down tilts it (on a
-  // touch screen that scrolls the page, so the arrows tilt it); a tap without a
-  // drag opens a ticket
-  let drag = null;
-  canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: view.yaw, pitch: view.pitch, moved: false, id: e.pointerId, mouse: e.pointerType !== 'touch' }; });
+  // touch screen that scrolls the page, so the arrows tilt it); with shift, or the right
+  // or middle button, the mouse moves it instead, closer in; two fingers pinch it closer and
+  // move it; a tap without a drag opens a ticket
+  let drag = null, pinch = null, pinched = false;
+  const touches = new Map();
+  const middle = () => { const r = canvas.getBoundingClientRect(), [a, b] = [...touches.values()]; return { x: (a.x + b.x) / 2 - r.left - r.width / 2, y: (a.y + b.y) / 2 - r.top - r.height / 2, d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) }; };
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) { pinch = middle(); pinched = true; drag = null; }
+      if (touches.size > 1) return;
+    }
+    const mouse = e.pointerType !== 'touch';
+    drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, yaw: view.yaw, pitch: view.pitch, moved: false, id: e.pointerId, mouse, pan: mouse && (e.shiftKey || e.button === 1 || e.button === 2) };
+  });
   canvas.addEventListener('pointermove', (e) => {
-    if (!drag) { if (!glide.on) light(shows(pick(e))); return; }
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size === 2) {
+      const m = middle();
+      zoomBy(m.d / pinch.d, m.x, m.y); panBy(m.x - pinch.x, m.y - pinch.y);
+      pinch = m;
+      return;
+    }
+    if (!drag) { if (!glide.on && !pinched) light(shows(pick(e))); return; }
     const dx = e.clientX - drag.x, dy = drag.mouse ? e.clientY - drag.y : 0;
     if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) { drag.moved = true; canvas.setPointerCapture(drag.id); }
     if (!drag.moved) return;
+    if (drag.pan) { panBy(e.clientX - drag.lx, e.clientY - drag.ly); drag.lx = e.clientX; drag.ly = e.clientY; return; }
     view.yaw = drag.yaw - dx * 0.008; view.goal = null;
     if (drag.mouse) { view.pitch = tilted(drag.pitch + dy * 0.006); view.pitchGoal = null; }
     dirty = true;
   });
+  const lift = (e) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = null;
+    if (!touches.size && pinched) { pinched = false; drag = null; return true; }   // the end of a pinch is not a tap
+    return false;
+  };
   canvas.addEventListener('pointerup', (e) => {
     const was = drag; drag = null;
-    if (!was || was.moved || glide.on) return;
+    if (lift(e) || !was || was.moved || glide.on) return;
     const t = pick(e);
     if (t === 'bus' || t === 'tram') board(t); else if (t === 'in') enter(); else if (t === 'out') leave(); else if (t) open(t); else close();
   });
-  canvas.addEventListener('pointercancel', () => { drag = null; });
+  canvas.addEventListener('pointercancel', (e) => { lift(e); drag = null; });
   canvas.addEventListener('pointerleave', () => { if (!drag) light(''); });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  // a pinch on a trackpad comes as the wheel with ctrl (a plain wheel scrolls the page); Safari's
+  // own gestures, where a touch screen's pointers are not already doing it
+  canvas.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    zoomBy(Math.exp(-e.deltaY * 0.01), e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2);
+  }, { passive: false });
+  let gesture = 1;
+  canvas.addEventListener('gesturestart', (e) => { e.preventDefault(); gesture = 1; });
+  canvas.addEventListener('gesturechange', (e) => {
+    e.preventDefault();
+    if (touches.size) return;
+    const r = canvas.getBoundingClientRect();
+    zoomBy(e.scale / gesture, e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2);
+    gesture = e.scale;
+  });
   // the arrows turn it a quarter at a time
   const turn = (dir) => { view.goal = (view.goal ?? view.yaw) + dir * Math.PI / 2; dirty = true; };
   const tilt = (dir) => { view.pitchGoal = tilted((view.pitchGoal ?? view.pitch) + dir * 0.35); dirty = true; };
@@ -1939,6 +2019,9 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   arrows.children[1].addEventListener('click', () => turn(1));
   arrows.children[2].addEventListener('click', () => tilt(1));
   arrows.children[3].addEventListener('click', () => tilt(-1));
+  arrows.insertAdjacentHTML('beforeend', '<button type="button" class="city-zoom" aria-label="Closer" title="Closer">+</button><button type="button" class="city-zoom" aria-label="Further off" title="Further off">&minus;</button>');
+  arrows.children[4].addEventListener('click', () => nearer(1.6));
+  arrows.children[5].addEventListener('click', () => nearer(1 / 1.6));
   // and the yellow bus, off to the other city
   const busButton = document.createElement('button');
   busButton.type = 'button';
@@ -1974,9 +2057,10 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     trip.next = from !== 'tools' && to !== 'tools' ? to : null;
     if (trip.next) to = 'tools';
     close(); light('');
+    view.zoomGoal = 1;
     Object.assign(trip, { leg: TRIPS[`${from}>${to}`], from, to, u: 0 });
     const still = typeof animSpeed === 'number' && animSpeed <= 0;
-    if (still) { arrive(); view.cx = CENTRE[view.city]; view.cxGoal = null; return; }
+    if (still) { arrive(); Object.assign(view, { cx: CENTRE[view.city], cxGoal: null, zoom: 1, zoomGoal: null, px: 0, pz: 0 }); return; }
     trip.on = true;
     showCity();
   }
@@ -1996,8 +2080,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   const WHOLE = { cx: PAT, cy: 3, cz: 1, zoom: 1 }, CLOSE = 3.4;
   const glide = { on: false, t: 0, from: null, to: null, fade: '', then: null, pace: 1 };
   function glideTo(to, fade, then) {
-    Object.assign(glide, { on: true, t: 0, from: { cx: view.cx, cy: view.cy, cz: view.cz, zoom: view.zoom }, to, fade, then });
-    view.cxGoal = null; dirty = true;
+    Object.assign(glide, { on: true, t: 0, from: { cx: view.cx + view.px, cy: view.cy, cz: view.cz + view.pz, zoom: view.zoom }, to, fade, then });
+    Object.assign(view, { cxGoal: null, zoomGoal: null, px: 0, pz: 0 }); dirty = true;
   }
   const onDoor = (p) => ({ cx: p.x, cy: p.y, cz: p.z, zoom: CLOSE });
   function through(inward, then) {
@@ -2008,7 +2092,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       view.city = inward ? 'lab' : 'paterna';
       if (!inward) rest();
     };
-    if (typeof animSpeed === 'number' && animSpeed <= 0) { swap(); Object.assign(view, WHOLE); view.cxGoal = null; showCity(); then && then(); return; }
+    if (typeof animSpeed === 'number' && animSpeed <= 0) { swap(); Object.assign(view, WHOLE, { cxGoal: null, zoomGoal: null, px: 0, pz: 0 }); showCity(); then && then(); return; }
     glideTo(onDoor(from), 'out', () => { swap(); Object.assign(view, onDoor(to)); glideTo(WHOLE, 'in', () => { showCity(); then && then(); }); showCity(); });
     showCity();
   }
@@ -2201,6 +2285,12 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       view.cxGoal = z > a ? Math.max(was, x) : Math.min(was, x);
       if (trip.u >= L) arrive();
       dirty = true;
+    }
+    if (view.zoomGoal !== null && !glide.on) {
+      const d = Math.log(view.zoomGoal / view.zoom);
+      view.zoom = Math.abs(d) < 0.003 ? view.zoomGoal : view.zoom * Math.exp(d * Math.min(1, 0.15 * dt));
+      if (view.zoom === view.zoomGoal) view.zoomGoal = null;
+      held(); dirty = true;
     }
     if (glide.on) {
       glide.t = Math.min(1, glide.t + ds / 40 * glide.pace);
