@@ -219,11 +219,22 @@ function toolTicket(tag) {
       links: [{ label: work.preprint ? 'preprint' : 'paper', href: `https://doi.org/${work.doi}` }, ...(work.links || []).map(l => ({ label: l.label.toLowerCase(), href: l.url }))],
     };
   }
-  // Paterna: the institute where I work, and the map of who works with whom there
+  // Paterna: the institute where I work (a way into its lab), and the map of who works with whom there
   if (tag === 'i2sysbio') return {
     name: 'I2SysBio', kind: 'CSIC and Universitat de València', meta: 'Parc Científic, Paterna · tram line 4, Santa Gemma', art: 'sign',
     desc: 'The Institute for Integrative Systems Biology, where I work in the PathoGenOmics Lab on the genomics of tuberculosis and SARS-CoV-2.',
-    links: [{ label: 'the institute', href: 'https://www.i2sysbio.es/' }, { label: 'PathoGenOmics-Lab', href: `https://github.com/${SITE.githubLab}` }],
+    links: [{ label: 'step inside', go: 'lab' }, { label: 'the institute', href: 'https://www.i2sysbio.es/' }, { label: 'PathoGenOmics-Lab', href: `https://github.com/${SITE.githubLab}` }],
+  };
+  // inside it: the lab, and my desk, from where the tram and the bus go on to the tools and the papers
+  if (tag === 'pgl') return {
+    name: 'PathoGenOmics Lab', kind: 'at I2SysBio',
+    desc: 'The group I have worked in since 2021, as a research technician and a PhD candidate: genomic surveillance, pipelines and open-source tools for tuberculosis and SARS-CoV-2.',
+    links: [{ label: 'PathoGenOmics-Lab', href: `https://github.com/${SITE.githubLab}` }],
+  };
+  if (tag === 'desk') return {
+    name: 'my desk', kind: 'in thesis mode',
+    desc: 'Where I am writing up my PhD thesis, Evolutionary genomics of pathogen diversity in Mycobacterium tuberculosis and SARS-CoV-2: the fourteen lineages of the tree on one screen, code on the other.',
+    links: [{ label: 'my GitHub', href: `https://github.com/${SITE.githubUser}` }, { label: 'the tools', go: 'tools' }, { label: 'my papers', go: 'sagunto' }],
   };
   if (tag === 'xarxa') return {
     name: 'Researchers map', kind: 'an experiment',
@@ -264,9 +275,9 @@ function initToolCity() {
   const probe = document.createElement('canvas');
   if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
   // the city takes its room now, so nothing below it moves when it arrives
-  // (Sagunt's and Paterna's names wait hidden: the city starts in Valencia, and on a phone nothing may move when it arrives)
+  // (Sagunt's, Paterna's and the lab's names wait hidden: the city starts in Valencia, and on a phone nothing may move when it arrives)
   const chip = (s, far) => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"${far ? ' hidden' : ''}><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`;
-  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.concat(PATERNA_STOPS).map(s => chip(s, true)).join('');
+  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.concat(PATERNA_STOPS, LAB_STOPS).map(s => chip(s, true)).join('');
   box.hidden = false;
   section.classList.add('city-on');
   toggle.addEventListener('click', () => {
