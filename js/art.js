@@ -809,7 +809,7 @@ function initKoiPond() {
   }, { passive: true });
   document.addEventListener('mouseout', e => { if (!e.relatedTarget) pointer.x = pointer.y = -9999; });
   // a click or a tap on bare paper throws food on the water
-  const NOT_WATER = 'a, button, input, select, textarea, label, [role="button"], [tabindex], p, h1, h2, h3, h4, li, figure, .card, .tool-card, .gh-card, .letter, .stat, .helix-card, .papers-track, .side-card, .notebook, .diary-entry, .stop, .experiment, .chromosome-wrap, .topbar, .bench, .console, .polar';
+  const NOT_WATER = 'a, button, input, select, textarea, label, [role="button"], [tabindex], p, h1, h2, h3, h4, li, figure, .card, .tool-card, .gh-card, .letter, .stat, .helix-card, .papers-track, .side-card, .notebook, .diary-entry, .stop, .experiment, .chromosome-wrap, .topbar, .bench, .console, .polar, .city';
   document.addEventListener('pointerdown', e => {
     if (e.button > 0 || !e.target.closest || e.target.closest(NOT_WATER) || show) return;
     feed(e.clientX, e.clientY, 3 + Math.floor(Math.random() * 3));

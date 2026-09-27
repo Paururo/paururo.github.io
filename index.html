@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..700,100,1;1,9..144,400..700,100,1&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Caveat:wght@500..700&family=Pixelify+Sans:wght@400..600&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=b797d22f38">
+  <link rel="stylesheet" href="css/style.css?v=4d4839bc22">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -328,11 +328,17 @@
         </div>
 
         <div class="pub-controls">
+          <div class="pub-tabs" role="group" aria-label="Which papers">
+            <button type="button" class="pub-tab" data-tab="all" aria-pressed="true">all</button>
+            <button type="button" class="pub-tab" id="pubLedToggle" aria-pressed="false" title="Only the papers I led as first or co-first author">led by me</button>
+            <button type="button" class="pub-tab" data-tab="tb" aria-pressed="false">TB</button>
+            <button type="button" class="pub-tab" data-tab="cov" aria-pressed="false">SARS-CoV-2</button>
+            <button type="button" class="pub-tab" data-tab="cited" aria-pressed="false">most cited</button>
+          </div>
           <div class="pub-search-wrap">
             <i class="fas fa-search" aria-hidden="true"></i>
             <input type="search" class="pub-search" id="pubSearch" placeholder="search titles and journals" aria-label="Search publications">
           </div>
-          <button type="button" class="stamp-toggle" id="pubLedToggle" aria-pressed="false" title="Show only the papers I led as first or co-first author">first author</button>
         </div>
         <p class="pub-status" id="pubStatus" aria-live="polite" hidden></p>
         <p class="pub-no-results" id="pubNoResults">No publications match these filters.</p>
@@ -343,13 +349,11 @@
         </div>
 
         <div class="pub-layout" id="pubLayout" hidden>
-          <ol class="pub-list" id="pubList"></ol>
-          <aside class="pub-sidebar" id="pubCharts" aria-label="Topics">
-            <div class="side-card">
-              <h4 class="side-title">topics</h4>
-              <div class="bars" id="chartTopicBars"></div>
-            </div>
-          </aside>
+          <!-- the papers as a departures board: one row each, a press opens it -->
+          <div class="pub-board">
+            <div class="pub-board-head" aria-hidden="true"><span>year</span><span>paper</span><span>journal</span><span>cited</span><span></span></div>
+            <ol class="pub-list" id="pubList"></ol>
+          </div>
         </div>
       </div>
     </section>
@@ -364,6 +368,14 @@
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
+        <div class="city" id="toolCity" data-src="js/city.js?v=7436b1e1e5" hidden>
+          <div class="city-stage"></div>
+          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn the city</p>
+          <div class="city-chips" id="cityChips"></div>
+        </div>
+        <button type="button" class="px-btn city-list-toggle" id="toolListToggle" aria-expanded="false" aria-controls="toolList">all tools and repositories, as a list</button>
+
+        <div class="tool-list" id="toolList">
         <div class="tool-grid" id="toolGrid"></div>
 
         <h3 class="sub-head">All repositories <span class="sub-note">live from GitHub</span></h3>
@@ -381,6 +393,8 @@
               <div class="bars" id="chartTechBars"></div>
             </div>
           </aside>
+        </div>
+
         </div>
 
         <div class="experiments" id="lab">
@@ -542,10 +556,10 @@
     <div class="dna-ticker-track" id="tickerTrack"></div>
   </div>
 
-  <script src="js/content.js?v=1563e48a00"></script>
-  <script src="js/art.js?v=eb17d91eea"></script>
+  <script src="js/content.js?v=6e1dc81e73"></script>
+  <script src="js/art.js?v=5f3eb73cc0"></script>
   <script src="js/play.js?v=d10fa5395d"></script>
   <script src="js/polar.js?v=86f2d176c5"></script>
-  <script src="js/main.js?v=3999bb4526"></script>
+  <script src="js/main.js?v=82293b8f15"></script>
 </body>
 </html>

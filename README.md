@@ -9,13 +9,14 @@ Plain HTML, CSS and JavaScript: no build step, no framework.
 |---|---|
 | `index.html` | The page: one scroll, nine sections |
 | `css/style.css` | Notebook look, light and dark themes |
-| `js/content.js` | **Everything you edit**: papers I led, tools, news, career steps, helix labels |
+| `js/content.js` | **Everything you edit**: papers I led, tools, the stops of the tool city, news, career steps, helix labels |
 | `js/art.js` | Drawings: pixel sprites, the koi pond behind the page and its 3D shows, helices, the career chromosome, the genome ruler, the tree of the fourteen TB lineages |
 | `js/play.js` | The desk in *Off the bench* (keyboard, the console under it, the monitor, a Bambu Lab X1C, lamp, mug, microbes), the coffee on the letter, the pond tricks |
 | `js/polar.js` | Polar, the lovebird: my shoulder in the photo, real perches, the desk, the ruler with the plush bacillus, his coconut in the top right corner and the half coconut on the desk |
 | `assets/img/polar.png` | Polar's poses, generated (see below) |
 | `assets/img/coco.png`, `assets/img/coco-half.png` | His two coconuts, generated (see below) |
-| `js/main.js` | Behaviour and live data |
+| `js/city.js` | The tools as a voxel city: a station for BAMpiro, a railway line and a building for each tool, a ticket for each building. Drawn with three.js (from jsDelivr), loaded only when the section comes near and where WebGL works; otherwise the cards show as before |
+| `js/main.js` | Behaviour and live data, the publications as a departures board |
 | `i2sysbio-networks.html` | The I2SysBio researchers map (standalone) |
 | `preview.html` | Single-file copy of the page, generated |
 
@@ -25,7 +26,7 @@ Open `js/content.js` and add one object to the matching list:
 
 - **A paper I led**: `SELECTED_WORK`. It also marks the paper as first or co-first author in the live list.
 - **A news post**: `BLOG_POSTS` (newest first).
-- **A tool**: `FEATURED_TOOLS`. Only public repositories; add `bioconda: '<package>'` to show its live download count.
+- **A tool**: `FEATURED_TOOLS`. Only public repositories; add `bioconda: '<package>'` to show its live download count. Its ticket in the tool city is built from this entry; a new building needs a stop in `CITY_STOPS` and a few blocks in `buildCity` in `js/city.js`.
 - **A career step**: `CAREER`. `end: null` means "until now".
 
 The rest updates itself, with a one-day cache in the visitor's browser:

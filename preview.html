@@ -660,34 +660,52 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .pub-loading p, .gh-loading p { font-family: var(--font-hand); font-size: 22px; color: var(--muted); text-align: center; }
 .loading-sprite { animation: hop 0.8s steps(2) infinite; }
 
-.pub-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 26px; align-items: start; margin-top: 10px; }
-.pub-list { display: flex; flex-direction: column; gap: 12px; }
-.pub-item {
-  --pc: var(--terra);
-  display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 14px; padding: 16px 18px 14px;
-  background: var(--card); border: 1.5px solid var(--line); border-radius: 5px; transition: border-color 0.2s, box-shadow 0.2s;
+/* the papers as a departures board: one row each, in a pixel font on a dark board, in either theme */
+.pub-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.pub-tab {
+  font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 13.5px; padding: 2px 11px; color: var(--ink); cursor: pointer;
+  background: var(--card); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); transition: transform 0.1s, box-shadow 0.1s;
 }
-.pub-item:hover { border-color: color-mix(in srgb, var(--ink) 40%, var(--line)); }
-.pub-item--led { border-left: 5px solid var(--pc); }
-.pub-item.cov { --pc: var(--sage); }
-.pub-item.flash { animation: flash 1.6s ease; }
-@keyframes flash { 0%, 40% { box-shadow: 0 0 0 4px var(--hl-ochre); border-color: var(--ink); } 100% { box-shadow: none; } }
-.pub-year { font-family: var(--font-hand); font-weight: 700; font-size: 25px; line-height: 1; color: var(--terra-ink); }
-.pub-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.pub-tab:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.pub-tab[aria-pressed="true"] { background: #15191E; color: #F7D774; }
+.pub-layout { margin-top: 10px; }
+.pub-board {
+  --lcd: #F7D774; padding: 12px 14px 10px; border-radius: 8px; background: #15191E; color: var(--lcd);
+  box-shadow: inset 0 0 0 3px #2B3139, 3px 3px 0 var(--ink); font-family: var(--font-pixel); font-variant-ligatures: none;
+}
+.pub-board-head, .pub-board .pub-item { display: grid; grid-template-columns: 50px minmax(0, 1fr) 180px 52px 78px; gap: 14px; align-items: baseline; }
+.pub-board-head { padding: 0 8px 7px; border-bottom: 1px dashed #3A424C; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C96A3; }
+.pub-board-head span:nth-child(4) { text-align: right; }
+.pub-list { margin: 0; padding: 0; list-style: none; }
+.pub-board .pub-item { position: relative; padding: 8px; border-bottom: 1px dashed #2A3038; cursor: pointer; }
+.pub-board .pub-item:hover, .pub-board .pub-item:focus-visible { background: rgba(247, 215, 116, 0.08); outline: none; }
+.pub-board .pub-item:focus-visible { box-shadow: inset 0 0 0 1.5px var(--lcd); }
+.pub-board .pub-item--led { box-shadow: inset 3px 0 0 #86F09C; }
+.pub-board .pub-item.flash { animation: flash 1.6s ease; }
+@keyframes flash { 0%, 40% { background: rgba(247, 215, 116, 0.28); } 100% { background: none; } }
+.pub-year { font-size: 15px; color: var(--lcd); }
+.pub-content { min-width: 0; }
+.pub-content h3 { font-family: inherit; font-weight: 400; font-size: 15px; line-height: 1.35; color: #FFE9A8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pub-journal { min-width: 0; font-size: 13.5px; color: #9FC3F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.citation-badge { justify-self: end; font-size: 15px; color: #86F09C; }
+.pub-chips { display: flex; justify-content: flex-end; gap: 5px; }
+.pub-chip { padding: 0 5px; border-radius: 3px; font-size: 11px; line-height: 1.5; color: #15191E; }
+.pub-chip--led { background: #86F09C; } .pub-chip--tb { background: #E8958A; } .pub-chip--cov { background: #9DB6E4; }
+/* a row opened: the whole title, who led it, the DOI */
+.pub-more { display: none; }
+.pub-venue { display: none; color: #9FC3F0; }
+.pub-board .pub-item.open h3 { white-space: normal; }
+.pub-board .pub-item.open .pub-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; font-size: 13px; }
+.pub-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .role-badge, .preprint-badge {
   display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-pixel); font-variant-ligatures: none;
   font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 6px; border: 1.5px solid currentColor;
 }
-.role-badge { color: var(--sage-ink); }
-.preprint-badge { color: var(--blue-ink); }
-.pub-content h3 { font-family: var(--font-display); font-weight: 500; font-size: 17px; line-height: 1.4; font-variation-settings: 'SOFT' 100; }
-.pub-journal { font-size: 14px; color: var(--muted); font-style: italic; margin-top: 3px; }
-.pub-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
-.btn-doi { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: 13px; font-weight: 600; color: var(--ink); border: 1.5px solid var(--line); border-radius: 3px; background: var(--paper); }
-.btn-doi:hover { text-decoration: none; border-color: var(--ink); }
+.role-badge { color: #86F09C; }
+.preprint-badge { color: #9DB6E4; }
+.btn-doi { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px; font-size: 13px; color: #15191E; background: var(--lcd); border-radius: 3px; }
+.btn-doi:hover { text-decoration: none; filter: brightness(1.08); }
 .btn-doi i { font-size: 10px; }
-.citation-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--muted); padding: 2px 8px; border: 1.5px dashed var(--line); }
-.citation-badge i { font-size: 10px; }
 
 .side-card { position: sticky; top: calc(var(--header) + 16px); padding: 16px; background: var(--card); border: 1.5px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); }
 .side-title { font-family: var(--font-pixel); font-variant-ligatures: none; font-weight: 400; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
@@ -713,6 +731,45 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .bar-count { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12px; color: var(--muted); }
 
 /* ==================== TOOLS ==================== */
+/* the tools as a voxel city (js/city.js): a canvas drawn at a third of its size, blown up in crisp pixels */
+.city { position: relative; margin: 6px 0 14px; }
+.city-stage { position: relative; aspect-ratio: 100 / 56; }
+.city-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; touch-action: pan-y; cursor: grab; }
+/* over the city the names float by their buildings; on a phone they line up under it */
+.city-chips { display: contents; }
+.city-hint { position: absolute; left: 0; bottom: 4px; margin: 0; font-family: var(--font-hand); font-size: 20px; color: var(--muted); pointer-events: none; }
+.city-label {
+  position: absolute; left: 0; top: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; padding: 2px 8px 3px;
+  border: 1.5px solid var(--ink); border-radius: 4px; background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink);
+  font: 600 12px/1.15 var(--font-body); white-space: nowrap; cursor: pointer;
+}
+.city-label::before { content: ''; width: 10px; height: 4px; border-radius: 2px; margin-bottom: 2px; background: var(--c, transparent); }
+.city-label small { display: none; font-size: 10.5px; font-weight: 400; color: var(--muted); }
+.city-label.lit, .city-label:focus-visible { z-index: 2; background: var(--note); }
+.city-label.lit small, .city-label:focus-visible small { display: block; }
+.city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
+.city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
+.city-ticket {
+  position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
+  background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
+  font-size: 13px; line-height: 1.45;
+}
+.city-ticket::before { content: ''; position: absolute; left: 7px; top: 9px; bottom: 9px; border-left: 2px dashed var(--ochre-soft); }
+.city-ticket p { margin: 0; }
+.city-ticket-name b { font-size: 16px; }
+.city-ticket-name span { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 11.5px; color: var(--ochre-ink); }
+.city-ticket-meta { color: var(--muted); font-size: 12px; margin: 1px 0 5px !important; }
+.city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
+.city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
+.city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.city-ticket-x { position: absolute; right: 6px; top: 3px; border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
+.city-turn { position: absolute; right: 6px; top: 6px; z-index: 2; display: flex; gap: 6px; }
+.city-turn button { width: 32px; height: 30px; font-size: 17px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+/* while the city is up, the cards and the repositories wait under a button */
+.city-list-toggle { display: none; margin: 0 auto 8px; }
+.city-on .city-list-toggle { display: table; }
+.city-on .tool-list { display: none; }
+.city-on.list-open .tool-list { display: block; margin-top: 22px; }
 .tool-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 26px 22px; }
 .tool-grid > .tool-card { flex: 0 1 calc((100% - 44px) / 3); min-width: 0; }
 .tool-card {
@@ -1086,7 +1143,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root[data-theme="dark"] .ruler-walker svg, :root[data-theme="dark"] .px-peek svg, :root[data-theme="dark"] .card-px svg { filter: drop-shadow(0 0 6px rgba(92, 201, 92, 0.95)); }
 :root[data-theme="dark"] .px-bug svg { filter: drop-shadow(0 0 5px var(--px-n)); }
 :root[data-theme="dark"] .face-ring path { filter: url(#rough) drop-shadow(0 0 3px var(--terra)); }
-:root[data-theme="dark"] .card, :root[data-theme="dark"] .tool-card, :root[data-theme="dark"] .notebook, :root[data-theme="dark"] .helix-card, :root[data-theme="dark"] .side-card, :root[data-theme="dark"] .letter, :root[data-theme="dark"] .diary-entry, :root[data-theme="dark"] .papers-track, :root[data-theme="dark"] .stop, :root[data-theme="dark"] .gh-card, :root[data-theme="dark"] .pub-item, :root[data-theme="dark"] .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+:root[data-theme="dark"] .card, :root[data-theme="dark"] .tool-card, :root[data-theme="dark"] .notebook, :root[data-theme="dark"] .helix-card, :root[data-theme="dark"] .side-card, :root[data-theme="dark"] .letter, :root[data-theme="dark"] .diary-entry, :root[data-theme="dark"] .papers-track, :root[data-theme="dark"] .stop, :root[data-theme="dark"] .gh-card, :root[data-theme="dark"] .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
 :root[data-theme="dark"] .chromatid, :root[data-theme="dark"] .centromere { stroke: var(--sage); filter: url(#rough) drop-shadow(0 0 4px rgba(45, 226, 230, 0.85)); }
 :root[data-theme="dark"] .ptrack-block.is-led { box-shadow: 0 0 10px var(--pc); }
 :root[data-theme="dark"] .stamp, :root[data-theme="dark"] .stamp-toggle, :root[data-theme="dark"] .role-badge, :root[data-theme="dark"] .preprint-badge, :root[data-theme="dark"] .px-tag { text-shadow: 0 0 8px currentColor; }
@@ -1126,7 +1183,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root:not([data-theme="light"]) .ruler-walker svg, :root:not([data-theme="light"]) .px-peek svg, :root:not([data-theme="light"]) .card-px svg { filter: drop-shadow(0 0 6px rgba(92, 201, 92, 0.95)); }
 :root:not([data-theme="light"]) .px-bug svg { filter: drop-shadow(0 0 5px var(--px-n)); }
 :root:not([data-theme="light"]) .face-ring path { filter: url(#rough) drop-shadow(0 0 3px var(--terra)); }
-:root:not([data-theme="light"]) .card, :root:not([data-theme="light"]) .tool-card, :root:not([data-theme="light"]) .notebook, :root:not([data-theme="light"]) .helix-card, :root:not([data-theme="light"]) .side-card, :root:not([data-theme="light"]) .letter, :root:not([data-theme="light"]) .diary-entry, :root:not([data-theme="light"]) .papers-track, :root:not([data-theme="light"]) .stop, :root:not([data-theme="light"]) .gh-card, :root:not([data-theme="light"]) .pub-item, :root:not([data-theme="light"]) .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+:root:not([data-theme="light"]) .card, :root:not([data-theme="light"]) .tool-card, :root:not([data-theme="light"]) .notebook, :root:not([data-theme="light"]) .helix-card, :root:not([data-theme="light"]) .side-card, :root:not([data-theme="light"]) .letter, :root:not([data-theme="light"]) .diary-entry, :root:not([data-theme="light"]) .papers-track, :root:not([data-theme="light"]) .stop, :root:not([data-theme="light"]) .gh-card, :root:not([data-theme="light"]) .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
 :root:not([data-theme="light"]) .chromatid, :root:not([data-theme="light"]) .centromere { stroke: var(--sage); filter: url(#rough) drop-shadow(0 0 4px rgba(45, 226, 230, 0.85)); }
 :root:not([data-theme="light"]) .ptrack-block.is-led { box-shadow: 0 0 10px var(--pc); }
 :root:not([data-theme="light"]) .stamp, :root:not([data-theme="light"]) .stamp-toggle, :root:not([data-theme="light"]) .role-badge, :root:not([data-theme="light"]) .preprint-badge, :root:not([data-theme="light"]) .px-tag { text-shadow: 0 0 8px currentColor; }
@@ -1210,7 +1267,17 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .topic-tree { width: calc(100% + 24px); margin: 0 -12px; }
   .fan-label { font-size: 23px; }
   .fan-clade { font-size: 17px; }
-  .pub-item { grid-template-columns: 1fr; gap: 6px; }
+  .pub-board { padding: 8px 8px 6px; }
+  .pub-board-head { display: none; }
+  .pub-board .pub-item { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "y t c" "y h h"; gap: 3px 10px; padding: 9px 6px; }
+  .pub-board .pub-year { grid-area: y; }
+  .pub-board .pub-content { grid-area: t; }
+  .pub-board .citation-badge { grid-area: c; }
+  .pub-board .pub-chips { grid-area: h; justify-content: flex-start; }
+  .pub-board .pub-journal { display: none; }
+  .pub-board .pub-content h3 { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .pub-board .pub-item.open h3 { display: block; }
+  .pub-board .pub-item.open .pub-venue { display: inline; }
   .drawings > .print { flex-basis: 100%; }
   .tool-grid > .tool-card { flex-basis: 100%; }
   .pub-search-wrap { flex-basis: 100%; }
@@ -1220,6 +1287,12 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .print:nth-child(n) { transform: none; }
   .ruler-feature span { display: none; }
   .coco { right: 8px; }
+  .city-stage { aspect-ratio: 100 / 72; }
+  .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
+  .city-label { position: static; transform: none !important; }
+  .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }
+  .city-hint { position: static; margin: 4px 0 0; text-align: center; font-size: 18px; line-height: 1.2; }
+  .city-ticket { position: relative; width: 100%; margin-top: 12px; transform: none !important; }
   .bench { --px: 2px; --mpx: 3px; height: 330px; }
   .bench-desk { height: 100px; }
   .thing { bottom: 113px; }
@@ -1547,11 +1620,17 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
         </div>
 
         <div class="pub-controls">
+          <div class="pub-tabs" role="group" aria-label="Which papers">
+            <button type="button" class="pub-tab" data-tab="all" aria-pressed="true">all</button>
+            <button type="button" class="pub-tab" id="pubLedToggle" aria-pressed="false" title="Only the papers I led as first or co-first author">led by me</button>
+            <button type="button" class="pub-tab" data-tab="tb" aria-pressed="false">TB</button>
+            <button type="button" class="pub-tab" data-tab="cov" aria-pressed="false">SARS-CoV-2</button>
+            <button type="button" class="pub-tab" data-tab="cited" aria-pressed="false">most cited</button>
+          </div>
           <div class="pub-search-wrap">
             <i class="fas fa-search" aria-hidden="true"></i>
             <input type="search" class="pub-search" id="pubSearch" placeholder="search titles and journals" aria-label="Search publications">
           </div>
-          <button type="button" class="stamp-toggle" id="pubLedToggle" aria-pressed="false" title="Show only the papers I led as first or co-first author">first author</button>
         </div>
         <p class="pub-status" id="pubStatus" aria-live="polite" hidden></p>
         <p class="pub-no-results" id="pubNoResults">No publications match these filters.</p>
@@ -1562,13 +1641,11 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
         </div>
 
         <div class="pub-layout" id="pubLayout" hidden>
-          <ol class="pub-list" id="pubList"></ol>
-          <aside class="pub-sidebar" id="pubCharts" aria-label="Topics">
-            <div class="side-card">
-              <h4 class="side-title">topics</h4>
-              <div class="bars" id="chartTopicBars"></div>
-            </div>
-          </aside>
+          <!-- the papers as a departures board: one row each, a press opens it -->
+          <div class="pub-board">
+            <div class="pub-board-head" aria-hidden="true"><span>year</span><span>paper</span><span>journal</span><span>cited</span><span></span></div>
+            <ol class="pub-list" id="pubList"></ol>
+          </div>
         </div>
       </div>
     </section>
@@ -1583,6 +1660,14 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
+        <div class="city" id="toolCity" data-src="js/city.js?v=7436b1e1e5" hidden>
+          <div class="city-stage"></div>
+          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn the city</p>
+          <div class="city-chips" id="cityChips"></div>
+        </div>
+        <button type="button" class="px-btn city-list-toggle" id="toolListToggle" aria-expanded="false" aria-controls="toolList">all tools and repositories, as a list</button>
+
+        <div class="tool-list" id="toolList">
         <div class="tool-grid" id="toolGrid"></div>
 
         <h3 class="sub-head">All repositories <span class="sub-note">live from GitHub</span></h3>
@@ -1600,6 +1685,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
               <div class="bars" id="chartTechBars"></div>
             </div>
           </aside>
+        </div>
+
         </div>
 
         <div class="experiments" id="lab">
@@ -1976,6 +2063,24 @@ const HELICES = [
 
 // ---------- Lineage colours from mycolorsTB (classicTB palette) ----------
 // https://github.com/PathoGenOmics-Lab/mycolorsTB
+// The tool city (js/city.js): a stop per building, in the order the lines
+// run. The tag is the building's name in the city; line, the colour of its
+// label; sub, what it answers, shown when you point at it.
+const CITY_STOPS = [
+  { tag: 'reads', name: 'raw reads', line: 'none', sub: 'the sequencer' },
+  { tag: 'BAMpiro', name: 'BAMpiro', line: 'hub', sub: 'the central station' },
+  { tag: 'pathotypr', name: 'pathotypr', line: 'red', sub: 'who is it, what resists' },
+  { tag: 'get_MNV', name: 'get_MNV', line: 'blue', sub: 'codons, together' },
+  { tag: 'eskaks', name: 'eskaks', line: 'blue', sub: 'dN/dS, pN/pS' },
+  { tag: 'snpick', name: 'snpick', line: 'green', sub: 'variable sites' },
+  { tag: 'IQ-TREE', name: 'IQ-TREE', line: 'ext', sub: 'the tree, not mine' },
+  { tag: 'distree', name: 'distree', line: 'green', sub: 'tree distances' },
+  { tag: 'fstic', name: 'fstic', line: 'ochre', sub: 'mixed infections' },
+  { tag: 'mycolorsTB', name: 'mycolorsTB', line: 'plum', sub: 'lineage colours' },
+  { tag: 'karyon', name: 'karyon', line: 'works', sub: 'under works' },
+  { tag: 'depot', name: 'the depot', line: 'depot', sub: 'older and smaller' },
+];
+
 const MYCOLORS_TB = {
   L1: '#ff3091', L2: '#001aff', L3: '#8a0bd2', L4: '#ff0000', L5: '#995200', L6: '#1eb040', L7: '#fbff00',
   L8: '#ff9d00', L9: '#37ff30', L10: '#8fbda1', A1: '#d1ae00', A2: '#8ef5c8', A3: '#73c2ff', A4: '#ff9cdb',
@@ -2804,7 +2909,7 @@ function initKoiPond() {
   }, { passive: true });
   document.addEventListener('mouseout', e => { if (!e.relatedTarget) pointer.x = pointer.y = -9999; });
   // a click or a tap on bare paper throws food on the water
-  const NOT_WATER = 'a, button, input, select, textarea, label, [role="button"], [tabindex], p, h1, h2, h3, h4, li, figure, .card, .tool-card, .gh-card, .letter, .stat, .helix-card, .papers-track, .side-card, .notebook, .diary-entry, .stop, .experiment, .chromosome-wrap, .topbar, .bench, .console, .polar';
+  const NOT_WATER = 'a, button, input, select, textarea, label, [role="button"], [tabindex], p, h1, h2, h3, h4, li, figure, .card, .tool-card, .gh-card, .letter, .stat, .helix-card, .papers-track, .side-card, .notebook, .diary-entry, .stop, .experiment, .chromosome-wrap, .topbar, .bench, .console, .polar, .city';
   document.addEventListener('pointerdown', e => {
     if (e.button > 0 || !e.target.closest || e.target.closest(NOT_WATER) || show) return;
     feed(e.clientX, e.clientY, 3 + Math.floor(Math.random() * 3));
@@ -5229,7 +5334,7 @@ const PAGE_PARTS = [
   'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup',
   'initCoconut', 'initPolar', 'initHelices', 'initGenomeRuler', 'scatterBugs',
   'initStatBubbles', 'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
-  'fetchToolDownloads',
+  'initToolCity', 'fetchToolDownloads',
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -5350,6 +5455,73 @@ function initSpeedControl() {
     tickerState.speed = 0.5 * animSpeed;
     show();
   });
+}
+
+// ==================== THE TOOL CITY ====================
+// The tools as a voxel city (js/city.js, drawn with three.js). It loads as
+// the section comes near, where WebGL works; the cards and the list of
+// repositories wait under a button for anyone who wants a list.
+const CITY_LINES = {
+  pathotypr: 'red line', get_MNV: 'blue line', eskaks: 'blue line', snpick: 'green line', distree: 'green line',
+  fstic: 'yellow line', mycolorsTB: 'purple line', BAMpiro: 'where every line meets',
+};
+// what a building's ticket says, with today's numbers
+function toolTicket(tag) {
+  const tool = FEATURED_TOOLS.find(t => t.name === tag);
+  if (tool) {
+    const dl = tool.bioconda && toolDownloads[tool.bioconda];
+    const repo = ghAllRepos.find(r => r.name.toLowerCase() === tool.name.toLowerCase());
+    return {
+      name: tool.name,
+      kind: [tool.lang, tool.bioconda ? 'Bioconda' : tool.cran ? 'CRAN' : ''].filter(Boolean).join(' · '),
+      meta: [dl && `${dl} downloads`, repo && `${repo.stargazers_count} ★`, CITY_LINES[tool.name]].filter(Boolean).join(' · '),
+      desc: tool.desc,
+      links: [tool.docs && { label: 'docs', href: tool.docs }, { label: 'repo', href: tool.repo }].filter(Boolean),
+    };
+  }
+  if (tag === 'reads') return { name: 'raw reads', kind: 'the sequencer', desc: 'Where every line starts: short reads, straight off the sequencer, on their way down the cables to BAMpiro.' };
+  if (tag === 'IQ-TREE') return { name: 'IQ-TREE', kind: 'not mine', desc: 'The tree builder the green line runs through: snpick gets the alignments ready for it, and distree measures the trees it grows.', links: [{ label: 'IQ-TREE', href: 'https://iqtree.github.io/' }] };
+  if (tag === 'karyon') return { name: 'karyon', kind: 'under works', desc: 'Genomic track plots in Rust, still being built. Come back soon.' };
+  if (tag === 'depot') {
+    const shown = new Set(FEATURED_TOOLS.map(t => t.name.toLowerCase()).concat('karyon'));
+    const rest = ghAllRepos.filter(r => !shown.has(r.name.toLowerCase()));
+    return {
+      name: 'the depot', kind: 'older and smaller',
+      desc: rest.length ? 'Scripts and small tools from earlier projects, resting between trips:' : 'Scripts and small tools from earlier projects; the list under the city has them all.',
+      links: rest.map(r => ({ label: r.name, href: r.html_url })),
+    };
+  }
+  return null;
+}
+function initToolCity() {
+  const box = document.getElementById('toolCity');
+  const section = document.getElementById('tools');
+  const toggle = document.getElementById('toolListToggle');
+  const chips = document.getElementById('cityChips');
+  if (!box || !section || !toggle || !chips || !('IntersectionObserver' in window)) return;
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
+  // the city takes its room now, so nothing below it moves when it arrives
+  chips.innerHTML = CITY_STOPS.map(s => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`).join('');
+  box.hidden = false;
+  section.classList.add('city-on');
+  toggle.addEventListener('click', () => {
+    const open = section.classList.toggle('list-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.textContent = open ? 'hide the list' : 'all tools and repositories, as a list';
+  });
+  const start = () => import(new URL(box.dataset.src, document.baseURI).href)
+    .then(m => { box.city = m.initCity(box, { lineages: Object.values(MYCOLORS_TB), ticket: toolTicket }); })
+    .catch(err => {
+      // no city after all: the list comes back
+      console.error('the tool city did not start:', err);
+      box.hidden = true;
+      section.classList.remove('city-on');
+    });
+  const io = new IntersectionObserver(es => {
+    if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); }
+  }, { rootMargin: '900px 0px' });
+  io.observe(section);
 }
 
 // ==================== EXPANDABLE HELIX CARDS ====================
@@ -5625,36 +5797,18 @@ function pathogenOf(pub) {
   return 'other';
 }
 
-const KEYWORD_PATTERNS = [
-  { pattern: /sars.?cov.?2|covid.?19/i, label: 'SARS-CoV-2', icon: 'fa-virus', color: 'var(--sage)' },
-  { pattern: /tuberculosis|\bMTB\b|\btb\b/i, label: 'Tuberculosis', icon: 'fa-bacterium', color: 'var(--terra)' },
-  { pattern: /mycobacterium/i, label: 'Mycobacterium', icon: 'fa-bacterium', color: 'var(--terra-soft)' },
-  { pattern: /phylogen/i, label: 'Phylogenetics', icon: 'fa-sitemap', color: 'var(--blue)' },
-  { pattern: /genom/i, label: 'Genomics', icon: 'fa-dna', color: 'var(--ochre)' },
-  { pattern: /epidemiol|surveillance/i, label: 'Epidemiology', icon: 'fa-chart-line', color: 'var(--plum)' },
-  { pattern: /bioinformatics|pipeline|workflow/i, label: 'Bioinformatics', icon: 'fa-laptop-code', color: 'var(--blue-soft)' },
-  { pattern: /variant|mutation|lineage/i, label: 'Variants', icon: 'fa-code-branch', color: 'var(--sage-soft)' },
-  { pattern: /resistance|antimicrobial|antibiotic/i, label: 'AMR', icon: 'fa-shield-halved', color: 'var(--terra)' },
-  { pattern: /sequenc/i, label: 'Sequencing', icon: 'fa-microscope', color: 'var(--ochre-soft)' },
-];
-function extractKeywords(pub) {
-  const text = `${pub.title} ${pub.journal}`;
-  const kws = [];
-  for (const { pattern, label } of KEYWORD_PATTERNS) if (pattern.test(text) && !kws.includes(label)) kws.push(label);
-  return kws;
-}
-
 // ==================== PUBLICATIONS ====================
-let pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+let pubFilterState = { year: 'all', topic: '', search: '', led: false, sort: '' };
 let pubStaticFiltersBound = false;
-let pubData = { pubs: [], keywords: [] };
+let pubData = { pubs: [] };
+const TOPIC_NAMES = { tb: 'TB', cov: 'SARS-CoV-2' };
 
 function pubMatches(i, ignore = '') {
-  const { year, keyword, search, led } = pubFilterState;
+  const { year, topic, search, led } = pubFilterState;
   const pub = pubData.pubs[i];
   const q = search.toLowerCase().trim();
   if (ignore !== 'year' && year !== 'all' && String(pub.year) !== year) return false;
-  if (ignore !== 'keyword' && keyword !== 'all' && !pubData.keywords[i].includes(keyword)) return false;
+  if (ignore !== 'topic' && topic && pathogenOf(pub) !== topic) return false;
   if (led && !pubRole(pub.doi)) return false;
   if (q) {
     const text = `${pub.title} ${pub.journal} ${preprintServer(pub.doi)} ${pubRole(pub.doi) || ''}`.toLowerCase();
@@ -5672,21 +5826,35 @@ function applyPubFilters() {
   });
   const none = document.getElementById('pubNoResults');
   if (none) none.style.display = visible === 0 && pubData.pubs.length ? 'block' : 'none';
+  // most cited first, or newest first as they come
+  const list = document.getElementById('pubList');
+  if (list) {
+    const key = pubFilterState.sort === 'cited' ? li => -(+li.dataset.cit) : li => +li.dataset.idx;
+    const rows = [...list.children];
+    const sorted = rows.slice().sort((a, b) => key(a) - key(b) || +a.dataset.idx - +b.dataset.idx);
+    if (sorted.some((li, i) => li !== rows[i])) sorted.forEach(li => list.appendChild(li));
+  }
+  const { year, topic, search, led, sort } = pubFilterState;
+  document.querySelectorAll('.pub-tab[data-tab]').forEach(tab => {
+    const t = tab.dataset.tab;
+    const on = t === 'all' ? (year === 'all' && !topic && !led && !sort && !search.trim()) : t === 'cited' ? sort === 'cited' : topic === t;
+    tab.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   updatePubStatus(visible);
   updateTrack();
-  updateTopicChart();
 }
 
 // What is filtered, and one button to undo it all
 function updatePubStatus(visible) {
   const el = document.getElementById('pubStatus');
   if (!el) return;
-  const { year, keyword, search, led } = pubFilterState;
+  const { year, topic, search, led, sort } = pubFilterState;
   const active = [
     year !== 'all' ? year : '',
-    keyword !== 'all' ? keyword : '',
-    led ? 'first author' : '',
+    topic ? TOPIC_NAMES[topic] : '',
+    led ? 'led by me' : '',
     search.trim() ? `"${search.trim()}"` : '',
+    sort === 'cited' ? 'most cited first' : '',
   ].filter(Boolean);
   el.hidden = !active.length;
   if (!active.length) { el.innerHTML = ''; return; }
@@ -5697,7 +5865,7 @@ function updatePubStatus(visible) {
 }
 
 function clearPubFilters() {
-  pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+  pubFilterState = { year: 'all', topic: '', search: '', led: false, sort: '' };
   const search = document.getElementById('pubSearch');
   if (search) search.value = '';
   document.getElementById('pubLedToggle')?.setAttribute('aria-pressed', 'false');
@@ -5705,7 +5873,7 @@ function clearPubFilters() {
 }
 
 function setYear(y) { pubFilterState.year = pubFilterState.year === y ? 'all' : y; applyPubFilters(); }
-function setKeyword(k) { pubFilterState.keyword = pubFilterState.keyword === k ? 'all' : k; applyPubFilters(); }
+function setTopic(t) { pubFilterState.topic = pubFilterState.topic === t ? '' : t; applyPubFilters(); }
 
 function initPubFilters() {
   if (pubStaticFiltersBound) return;
@@ -5728,6 +5896,20 @@ function initPubFilters() {
     if (!e.target.closest('[data-clear]')) return;
     clearPubFilters();
     document.getElementById('pubSearch')?.focus();
+  });
+  // the buttons over the board: everything, a pathogen, or the most cited first
+  document.querySelectorAll('.pub-tab[data-tab]').forEach(tab => tab.addEventListener('click', () => {
+    const t = tab.dataset.tab;
+    if (t === 'all') clearPubFilters();
+    else if (t === 'cited') { pubFilterState.sort = pubFilterState.sort === 'cited' ? '' : 'cited'; applyPubFilters(); }
+    else setTopic(t);
+  }));
+  // a press on a row opens it: the whole title, who led it, the DOI
+  const list = document.getElementById('pubList');
+  const flip = li => { const open = !li.classList.contains('open'); li.classList.toggle('open', open); li.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  list?.addEventListener('click', e => { if (e.target.closest('a')) return; const li = e.target.closest('.pub-item'); if (li) flip(li); });
+  list?.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('pub-item')) { e.preventDefault(); flip(e.target); }
   });
 }
 
@@ -5797,29 +5979,6 @@ function updateTrack() {
   });
 }
 
-function updateTopicChart() {
-  const container = document.getElementById('chartTopicBars');
-  if (!container || !pubData.pubs.length) return;
-  const counts = {};
-  pubData.pubs.forEach((p, i) => { if (pubMatches(i, 'keyword')) pubData.keywords[i].forEach(k => { counts[k] = (counts[k] || 0) + 1; }); });
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const max = Math.max(...sorted.map(e => e[1]), 1);
-  const active = pubFilterState.keyword;
-  container.innerHTML = sorted.map(([label, count]) => {
-    const kp = KEYWORD_PATTERNS.find(p => p.label === label) || {};
-    const dim = active !== 'all' && active !== label;
-    return `<div class="bar-row${active === label ? ' active' : ''}" role="button" tabindex="0" data-topic="${label}" aria-pressed="${active === label}" aria-label="${label}, ${count} papers">
-      <span class="bar-icon"><i class="fas ${kp.icon || 'fa-tag'}" aria-hidden="true"></i></span>
-      <span class="bar-label">${label}</span>
-      <span class="bar-track"><span class="bar-fill${dim ? ' dimmed' : ''}" style="display:block;width:${(count / max) * 100}%;--bc:${kp.color || 'var(--terra)'}"></span></span>
-      <span class="bar-count">${count}</span></div>`;
-  }).join('');
-  container.querySelectorAll('.bar-row').forEach(row => {
-    row.addEventListener('click', () => setKeyword(row.dataset.topic));
-    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKeyword(row.dataset.topic); } });
-  });
-}
-
 function parseOrcidWorks(groups) {
   const pubs = groups.map(g => {
     const s = g['work-summary'][0];
@@ -5838,7 +5997,7 @@ function parseOrcidWorks(groups) {
 }
 
 function renderPublications(pubs, citations) {
-  pubData = { pubs, keywords: pubs.map(extractKeywords) };
+  pubData = { pubs };
   statData.pubs = pubs.length;
   animateNumber('statPubs', pubs.length);
   document.querySelector('#pubCountBadge b').textContent = pubs.length;
@@ -5855,25 +6014,28 @@ function renderPublications(pubs, citations) {
     const isPreprint = pub.type === 'preprint';
     const venue = pub.journal || (isPreprint ? preprintServer(pub.doi) : '');
     const cit = citations && pub.doi && citations[pub.doi] !== undefined ? citations[pub.doi] : null;
+    const topic = pathogenOf(pub);
     const citHTML = pub.doi
-      ? `<span class="citation-badge" data-doi="${escapeHtml(pub.doi)}" title="Citations (Semantic Scholar)"><i class="fas fa-quote-right" aria-hidden="true"></i> ${cit !== null ? cit : '...'}</span>`
-      : '';
+      ? `<span class="citation-badge" data-doi="${escapeHtml(pub.doi)}" title="Citations (Semantic Scholar)">${cit !== null ? cit : '...'}</span>`
+      : '<span class="citation-badge"></span>';
     const badges = [
       role ? `<span class="role-badge">${role}</span>` : '',
       isPreprint ? '<span class="preprint-badge">preprint</span>' : '',
     ].join('');
     return `
-      <li class="pub-item ${pathogenOf(pub)}${role ? ' pub-item--led' : ''}" data-idx="${i}" id="pub-${i}">
+      <li class="pub-item ${topic}${role ? ' pub-item--led' : ''}" data-idx="${i}" data-cit="${cit ?? -1}" id="pub-${i}" tabindex="0" aria-expanded="false">
         <span class="pub-year">${pub.year || '?'}</span>
         <div class="pub-content">
-          ${badges ? `<div class="pub-badges">${badges}</div>` : ''}
           <h3>${pub.title}</h3>
-          ${venue ? `<p class="pub-journal">${venue}</p>` : ''}
-          <div class="pub-meta">
+          <div class="pub-more">
+            ${badges ? `<span class="pub-badges">${badges}</span>` : ''}
+            ${venue ? `<span class="pub-venue">${venue}</span>` : ''}
             ${pub.doi ? `<a href="https://doi.org/${pub.doi}" target="_blank" rel="noopener" class="btn-doi"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> DOI</a>` : ''}
-            ${citHTML}
           </div>
         </div>
+        <span class="pub-journal">${venue}</span>
+        ${citHTML}
+        <span class="pub-chips">${role ? '<span class="pub-chip pub-chip--led">led</span>' : ''}${TOPIC_NAMES[topic] ? `<span class="pub-chip pub-chip--${topic}">${topic === 'cov' ? 'CoV' : 'TB'}</span>` : ''}</span>
       </li>`;
   }).join('');
 
@@ -5922,10 +6084,15 @@ async function fetchAllCitations(pubs) {
       const count = res.ok ? ((await res.json()).citationCount || 0) : 0;
       citations[pub.doi] = count;
       total += count;
-      if (badge) badge.innerHTML = `<i class="fas fa-quote-right" aria-hidden="true"></i> ${count}`;
+      if (badge) {
+        badge.textContent = count;
+        badge.closest('.pub-item').dataset.cit = count;
+        // with the most cited first, each new count may move a row up
+        if (pubFilterState.sort === 'cited') applyPubFilters();
+      }
     } catch {
       citations[pub.doi] = 0;
-      if (badge) badge.innerHTML = '<i class="fas fa-quote-right" aria-hidden="true"></i> --';
+      if (badge) badge.textContent = '--';
     }
   }
   cacheSet('s2_citations', citations);
