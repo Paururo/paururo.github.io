@@ -751,7 +751,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
-.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); }
+.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); } .city-label--tram { --c: #2C4A9A; }
 .city-ticket {
   position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
   background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
@@ -763,6 +763,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-ticket-name span { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 11.5px; color: var(--ochre-ink); }
 .city-ticket-meta { color: var(--muted); font-size: 12px; margin: 1px 0 5px !important; }
 .city-ticket-title { font-weight: 600; margin-bottom: 4px !important; }
+.city-ticket-art { display: block; width: 100%; height: auto; margin: 6px 0 8px; border: 1.5px solid var(--ink); border-radius: 3px; }
 .city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
 .city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
 .city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
@@ -781,17 +782,24 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
 .city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
 /* the yellow bus's road on each map, and Sagunt's hill and sea */
-.city-map-bus { cursor: pointer; }
-.city-map-bus path { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.city-map-bus, .city-map-tram { cursor: pointer; }
+.city-map-bus path, .city-map-tram path, .city-map-edge { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
 .city-map-bus rect { fill: #F4C430; stroke: var(--ink); stroke-width: 2; }
 .city-map-bus:hover rect { fill: #FFD95A; }
 .city-map-bus text { fill: #26292D; }
+.city-map-tram rect { fill: #2C4A9A; stroke: var(--ink); stroke-width: 2; }
+.city-map-tram:hover rect { fill: #3B5DB8; }
+.city-map .city-map-tram text { fill: #FFFFFF; }
+.city-map-tram .city-map-platform { fill: var(--card); stroke-width: 1.5; }
+.city-map-block { fill: color-mix(in srgb, #B9B3A5 55%, var(--card)); stroke: var(--ink); stroke-width: 1.5; }
+.city-map-edge { stroke: color-mix(in srgb, #8D949C 60%, var(--card)); stroke-width: 3; }
 .city-map .city-map-town { font: italic 400 10px var(--font-body); fill: var(--muted); }
 .city-map-hill { fill: color-mix(in srgb, #C9B98A 45%, var(--card)); }
 .city-map-sea { fill: color-mix(in srgb, #4F9CC8 35%, var(--card)); }
 .city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
-.city-turn .city-bus { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
-.city-turn .city-bus svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
+.city-turn .city-bus, .city-turn .city-tram { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
+.city-turn .city-tram { background: #E6ECFA; }
+.city-turn .city-bus svg, .city-turn .city-tram svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
 .city-on .city-list-toggle { display: table; }
@@ -1690,9 +1698,9 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
           <span class="sec-note" id="toolsSummary">Six tools on <a href="https://bioconda.github.io/" target="_blank" rel="noopener">Bioconda</a>, downloaded about 7,000 times, and one R package on <a href="https://cran.r-project.org/package=mycolorsTB" target="_blank" rel="noopener">CRAN</a>.</span>
         </header>
 
-        <div class="city" id="toolCity" data-src="js/city.js?v=fb481473dc" hidden>
+        <div class="city" id="toolCity" data-src="js/city.js?v=96152a0218" hidden>
           <div class="city-stage"></div>
-          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn and tilt &middot; the yellow bus goes to Sagunt</p>
+          <p class="city-hint">press a building for its ticket &middot; drag, or use the arrows, to turn and tilt &middot; the yellow bus goes to Sagunt, the tram to Paterna</p>
           <div class="city-chips" id="cityChips"></div>
         </div>
         <button type="button" class="px-btn city-list-toggle" id="toolListToggle" aria-expanded="false" aria-controls="toolList">all tools and repositories, as a list</button>
@@ -2118,6 +2126,11 @@ const SAGUNTO_STOPS = [
   { tag: 'hospital', doi: '10.64898/2026.03.31.26346553', name: 'Wastewater, 2026', line: 'cov', sub: 'KP.3, three months early' },
   { tag: 'alt-forn', doi: '10.1371/journal.ppat.1010631', name: 'PLOS Pathogens, 2022', line: 'cov', sub: 'A222V opens the spike' },
   { tag: 'platja', doi: '10.1128/mBio.02315-21', name: 'mBio, 2021', line: 'cov', sub: 'mutations that kept coming back' },
+];
+// Paterna, past the bridge the other way, by tram: the Parc Cientific and I2SysBio, where I work.
+const PATERNA_STOPS = [
+  { tag: 'i2sysbio', name: 'I2SysBio', line: 'tram', sub: 'where I work' },
+  { tag: 'xarxa', name: 'Researchers map', line: 'tram', sub: 'who works with whom' },
 ];
 
 const MYCOLORS_TB = {
@@ -5525,6 +5538,17 @@ function toolTicket(tag) {
       links: [{ label: work.preprint ? 'preprint' : 'paper', href: `https://doi.org/${work.doi}` }, ...(work.links || []).map(l => ({ label: l.label.toLowerCase(), href: l.url }))],
     };
   }
+  // Paterna: the institute where I work, and the map of who works with whom there
+  if (tag === 'i2sysbio') return {
+    name: 'I2SysBio', kind: 'CSIC and Universitat de València', meta: 'Parc Científic, Paterna · tram line 4, Santa Gemma', art: 'sign',
+    desc: 'The Institute for Integrative Systems Biology, where I work in the PathoGenOmics Lab on the genomics of tuberculosis and SARS-CoV-2.',
+    links: [{ label: 'the institute', href: 'https://www.i2sysbio.es/' }, { label: 'PathoGenOmics-Lab', href: `https://github.com/${SITE.githubLab}` }],
+  };
+  if (tag === 'xarxa') return {
+    name: 'Researchers map', kind: 'an experiment',
+    desc: 'An interactive co-authorship network of I2SysBio researchers: explore the connections, filter by topic, and see who works with whom.',
+    links: [{ label: 'open the map', href: 'i2sysbio-networks.html' }],
+  };
   const tool = FEATURED_TOOLS.find(t => t.name === tag);
   if (tool) {
     const dl = tool.bioconda && toolDownloads[tool.bioconda];
@@ -5559,9 +5583,9 @@ function initToolCity() {
   const probe = document.createElement('canvas');
   if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
   // the city takes its room now, so nothing below it moves when it arrives
-  // (Sagunt's names wait hidden: the city starts at the tools, and on a phone nothing may move when it arrives)
+  // (Sagunt's and Paterna's names wait hidden: the city starts in Valencia, and on a phone nothing may move when it arrives)
   const chip = (s, far) => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"${far ? ' hidden' : ''}><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`;
-  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.map(s => chip(s, true)).join('');
+  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.concat(PATERNA_STOPS).map(s => chip(s, true)).join('');
   box.hidden = false;
   section.classList.add('city-on');
   toggle.addEventListener('click', () => {
@@ -5595,7 +5619,7 @@ function initBusLink() {
     const go = () => {
       if (box.hidden) return;                                 // the city did not start after all
       if (!box.city) { if (++tries < 60) setTimeout(go, 200); return; }
-      if (box.city.view.city !== 'sagunto') setTimeout(() => box.city.ride(), 450);
+      if (box.city.view.city !== 'sagunto') setTimeout(() => box.city.ride('sagunto'), 450);
     };
     go();
   });

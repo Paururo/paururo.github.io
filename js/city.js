@@ -1,10 +1,12 @@
 // ============================================================
-// The tools as a voxel city. The sequencer sends reads down its cables to
-// BAMpiro, the central station, and from there a railway line runs to each
-// question, with a building for the tool that answers it. Built of small
-// blocks, drawn in 3D and shown at a low resolution, in crisp pixels. Point at
-// a building to light it up, press it for its ticket; drag, or use the arrows,
-// to turn the city round and to look at it from higher up or lower down.
+// The tools as a voxel city, Valencia. The sequencer sends reads down its cables
+// to BAMpiro, the central station, and from there a railway line runs to each
+// question, with a building for the tool that answers it. A yellow bus goes
+// east to Sagunt, where the papers I led are, and a tram west to Paterna, where
+// I work. Built of small blocks, drawn in 3D and shown at a low resolution, in
+// crisp pixels. Point at a building to light it up, press it for its ticket;
+// drag, or use the arrows, to turn the city round and to look at it from higher
+// up or lower down.
 // ============================================================
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js';
 
@@ -242,6 +244,24 @@ function makeBoard(W = 148, D = 96) {
     fill(x + 5, 0, z + 1, 1, 5, 1, P.steel2); put(x + 5, 5, z + 1, P.bus); put(x + 5, 6, z + 1, P.bus);
   }
 
+  // a tram line along the south edge (rows 92 to 95): grass between the rails, poles for the wire,
+  // a buffer at its end; a stop with a shelter, the red sign of Metrovalencia and line 4's blue
+  function tramLine(x0, x1, s0, s1) {
+    const pave = tone(P.pave, [P.pave2, 0.3]);
+    for (let x = x0; x <= x1; x++) {
+      put(x, -1, 92, P.steel); put(x, -1, 95, P.steel); put(x, 0, 92, P.steel); put(x, 0, 95, P.steel);
+      put(x, -1, 93, '#7FAE62'); put(x, -1, 94, '#7FAE62');
+      if ((x - x0) % 16 === 8) { fill(x, 1, 91, 1, 6, 1, P.dark); fill(x, 7, 91, 1, 1, 3, P.dark); }
+    }
+    const end = x0 > 0 ? x0 - 1 : x1 + 1;
+    for (let z = 92; z <= 95; z++) { put(end, 0, z, P.dark); put(end, 1, z, z % 2 ? P.red : P.white); }
+    for (let x = s0; x <= s1; x++) for (let z = 89; z <= 91; z++) put(x, 0, z, z === 91 ? '#E8D24A' : pave);
+    const m = Math.round((s0 + s1) / 2);
+    for (const x of [m - 7, m + 7]) fill(x, 1, 89, 1, 4, 1, P.steel2);
+    fill(m - 8, 5, 88, 17, 1, 3, P.red); fill(m - 6, 1, 89, 13, 3, 1, P.glass, '', true);
+    fill(s0 + 3, 1, 90, 1, 6, 1, P.steel2); fill(s0 + 2, 7, 90, 3, 2, 1, P.red); put(s0 + 3, 7, 90, P.white); fill(s0 + 2, 5, 90, 3, 2, 1, '#2C4A9A');
+  }
+
   // the last touches, then only the blocks that can be seen
   function finish(extra) {
     // flowers and tufts in the grass
@@ -262,13 +282,13 @@ function makeBoard(W = 148, D = 96) {
     }
     return { list, S, W: W / S, D: D / S, ...extra };
   }
-  return { W, D, put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lawn, lay, bumper, ballast, road, roundabout, shelter, finish };
+  return { W, D, put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lawn, lay, bumper, ballast, road, roundabout, shelter, tramLine, finish };
 }
 
 // ---- the tool city ----
 function buildTools(lineages) {
   const b = makeBoard();
-  const { put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lay, bumper, ballast, road, roundabout, shelter } = b;
+  const { put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lay, bumper, ballast, road, roundabout, shelter, tramLine } = b;
   b.lawn();
   // squares and yards
   const pave = tone(P.pave, [P.pave2, 0.3]);
@@ -638,6 +658,8 @@ function buildTools(lineages) {
 
   // ---- the road to Sagunt: the yellow bus waits by the market, and turns at the roundabout ----
   road(55, 147); roundabout(54, 92); shelter(62, 90);
+  // ---- and the tram to Paterna, line 4, from its stop by the depot ----
+  tramLine(0, 44, 24, 44);
 
   // where a label goes when the middle of the top of its blocks is not the place (the crane would lift it too high)
   const pins = { karyon: [139, 14, 83] };
@@ -917,6 +939,148 @@ function buildSagunto(lineages) {
   return b.finish({ pins: { castell: [56, 24, 20], 'alt-forn': [114, 24, 22] } });
 }
 
+// ---- Paterna: the Parc Cientific, and I2SysBio, where I work ----
+// The site is on two levels: a plateau with the car park, the promenade along its edge and the
+// institute's door, and a lawn that slopes down from it, crossed by a zigzag path, to the street
+// where the tram stops. The institute stands at an angle to it all: its door is up on the plateau,
+// and as the ground falls away it goes on level, held up on pillars (it is built on a grid of its
+// own, buildI2, turned and set down here).
+const TOP = 8;                                                              // the plateau's top block
+const I2 = { cx: 60, cz: 40, turn: 0.5, sign: [37, 57] };                   // where the institute stands, and its sign
+function siteH(x, z) {
+  if (z > 81) return -1;                                                    // the street along the south
+  if (x <= 58) return TOP;                                                  // the plateau
+  if (x <= 60) return TOP - 3;                                              // a step down, under the railing
+  return Math.max(-1, Math.round(TOP - 3 - 6 * (x - 61) / 45));            // the lawn, down to the street's level
+}
+function buildPaterna() {
+  const b = makeBoard();
+  const { W, D, put, colorAt, del, fill, ground, clump } = b;
+  b.lawn();
+  const pave = tone(P.pave, [P.pave2, 0.3]);
+  const concrete = tone('#C9C0AE', ['#BEB5A2', 0.3], ['#D2CABA', 0.1]);
+  const earth = tone(P.dirt, [P.dirt2, 0.2], [P.pebble, 0.06]);
+  const lawn = tone(P.grass, [P.grass2, 0.3], ['#A7B56A', 0.12], ['#9DAA60', 0.06]);
+
+  // ---- the ground: raised into the plateau and the slope, a wall where they meet the street ----
+  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
+    const h = siteH(x, z);
+    if (h <= -1) continue;
+    for (let y = -1; y < h; y++) put(x, y, z, z >= 80 ? concrete : earth);
+    put(x, h, z, z >= 80 ? concrete : x <= 58 ? tone(P.grass, [P.grass2, 0.2]) : lawn);
+  }
+  // the promenade along the plateau's edges, with a railing over the drops
+  for (let x = 0; x <= 58; x++) for (let z = 72; z <= 79; z++) put(x, TOP, z, ((x >> 2) + (z >> 2)) % 2 ? '#D8D4CA' : '#CDC8BD');
+  for (let z = 0; z <= 79; z++) for (let x = 54; x <= 58; x++) put(x, TOP, z, ((x >> 2) + (z >> 2)) % 2 ? '#D8D4CA' : '#CDC8BD');
+  for (let x = 0; x <= 58; x++) { if (x % 2 === 0) put(x, TOP + 1, 80, P.steel2); put(x, TOP + 2, 80, P.steel); }
+  for (let z = 0; z <= 79; z++) { if (z % 2 === 0) put(59, TOP + 1, z, P.steel2); put(59, TOP + 2, z, P.steel); }
+  for (let x = 61; x <= 106; x++) { const h = siteH(x, 79); if (x % 2 === 0) put(x, h + 1, 80, P.steel2); put(x, h + 2, 80, P.steel); }
+  for (const x of [10, 26, 42]) { fill(x, TOP + 1, 76, 1, 8, 1, P.dark); put(x, TOP + 9, 76, P.light, '', true); put(x, TOP + 10, 76, P.dark); }
+  for (const x of [18, 34]) { fill(x, TOP + 1, 74, 3, 1, 1, P.plank); put(x, TOP + 1, 75, P.dark); put(x + 2, TOP + 1, 75, P.dark); fill(x, TOP + 2, 75, 3, 1, 1, P.plank); }
+  // the car park on the plateau
+  const tarmac = tone(P.asphalt, [P.asphalt2, 0.25]);
+  for (let x = 2; x <= 26; x++) for (let z = 4; z <= 66; z++) put(x, TOP, z, x === 14 || z % 6 === 0 ? '#E8E6DF' : tarmac(x, TOP, z));
+  const cars = [P.red, P.white, P.blue, '#3C4550', '#B9BEC3', P.ochre];
+  for (let z = 7; z < 64; z += 6) for (const x of [4, 17]) if (hash(x, 1, z) < 0.7) {
+    fill(x, TOP + 1, z, 5, 1, 3, cars[Math.floor(hash(x, 2, z) * cars.length)]); fill(x + 1, TOP + 2, z, 3, 1, 3, '#2E3844');
+  }
+  // the way in: paving from the promenade to the institute's door
+  for (let x = 30; x <= 53; x++) for (let z = 50; z <= 71; z++) if (x > 44 || z > 64) put(x, TOP, z, pave);
+
+  // ---- the lawn: a zigzag path down to the street, picnic tables, young trees, cypresses at the foot ----
+  const path = [[61, 66], [76, 76], [84, 62], [98, 76], [108, 84]];
+  for (let i = 0; i < path.length - 1; i++) {
+    const [ax, az] = path[i], [bx, bz] = path[i + 1], n = Math.max(Math.abs(bx - ax), Math.abs(bz - az)) * 2;
+    for (let k = 0; k <= n; k++) {
+      const x = Math.round(ax + (bx - ax) * k / n), z = Math.round(az + (bz - az) * k / n);
+      for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) if (z + dz < 80) put(x + dx, siteH(x + dx, z + dz), z + dz, tone('#CFC7B5', ['#C2B9A5', 0.3]));
+    }
+  }
+  const table = (x, z) => {
+    const s = siteH(x, z);
+    for (let dx = 0; dx < 4; dx++) for (let dz = 0; dz < 4; dz++) { for (let y = siteH(x + dx, z + dz) + 1; y <= s; y++) put(x + dx, y, z + dz, earth); put(x + dx, s, z + dz, lawn); }   // a level patch
+    fill(x, s + 1, z, 4, 1, 1, P.wood2, 'xarxa'); fill(x, s + 1, z + 3, 4, 1, 1, P.wood2, 'xarxa');
+    fill(x, s + 2, z + 1, 4, 1, 2, P.plank, 'xarxa');
+    for (const dx of [0, 3]) fill(x + dx, s + 1, z + 1, 1, 1, 2, P.dark, 'xarxa');
+  };
+  table(70, 52); table(88, 70); table(96, 56);
+  const sapling = (x, z) => { const s = siteH(x, z); fill(x, s + 1, z, 1, 5, 1, P.trunk); fill(x + 1, s + 1, z, 1, 3, 1, P.plank); clump(x + 0.5, s + 6.5, z + 0.5, 1.5, 1.3, 1.5, tone(P.leaf3, [P.leaf, 0.4]), '', 0.9); };
+  for (const [x, z] of [[66, 58], [80, 50], [92, 66], [102, 70], [74, 70], [104, 50], [86, 40]]) sapling(x, z);
+  for (let z = 30; z <= 74; z += 4) { const s = siteH(110, z); fill(110, s + 1, z, 2, 11 + (z % 3), 2, tone(P.pine2, [P.pine, 0.4])); put(110, s + 12 + (z % 3), z, P.pine2); }
+
+  // ---- the street below: a pavement, and palms on a small square to the east ----
+  ground(0, 82, W, 7, (x, y, z) => ((x >> 2) + (z >> 2)) % 2 ? '#D8D4CA' : '#CDC8BD');
+  ground(114, 0, 34, 82, tone(P.pave3, [P.pave2, 0.3]));
+  const palm = (x, z, h, y0 = 0) => {
+    fill(x, y0, z, 1, h, 1, (xx, y) => (y % 2 ? '#8A6A48' : '#7A5C3C'));
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      put(x + dx, y0 + h, z + dz, P.leaf); put(x + 2 * dx, y0 + h - 1, z + 2 * dz, P.leaf2);
+      if (!dx || !dz) put(x + 3 * dx, y0 + h - 2, z + 3 * dz, P.leaf2);
+    }
+    put(x, y0 + h, z, P.leaf);
+  };
+  for (const [x, z] of [[120, 10], [134, 18], [142, 36], [122, 50], [140, 64], [128, 76]]) palm(x, z, 9 + (x % 3));
+  for (const [x, z] of [[6, 70], [30, 6], [46, 20]]) palm(x, z, 8, TOP + 1);
+  for (let x = 116; x <= 146; x += 10) { fill(x, 0, 44, 3, 1, 1, P.plank); fill(x, 1, 45, 3, 1, 1, P.plank); }
+
+  // ---- the tram stop, Santa Gemma - Parc Cientific UV, on line 4, and the line to Valencia ----
+  b.tramLine(50, W - 1, 62, 98);
+
+  // ---- people ----
+  const person = (x, z, shirt, hair = P.hair) => { const s = siteH(x, z); put(x, s + 1, z, P.dark); put(x, s + 2, z, shirt); put(x, s + 3, z, P.skin); if (hair) put(x, s + 4, z, hair); };
+  [[72, 55, P.blue], [74, 55, P.red, '#D9A441'], [90, 73, P.green], [44, 68, P.plum], [30, 76, P.ochre], [84, 86, P.white, null], [90, 90, P.stone], [100, 78, P.red]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
+
+  return b.finish({ pins: { xarxa: [88, 12, 64] } });
+}
+
+// the institute on a grid of its own, 64 blocks by 40: four bays of a concrete grid filled with white
+// louvers over a band of glass, six floors from its door; the tower at its west end, cream, taller,
+// with the strip of glass over the door and the perforated canopy; an open frame on the roof; and,
+// where the ground (ground(x, z) gives its top block) falls away beneath it, pillars down to it
+function buildI2(ground) {
+  const b = makeBoard(64, 40);
+  const { put, fill, block, side, span, paint, recess, flat } = b;
+  const concrete = tone('#C9C0AE', ['#BEB5A2', 0.3], ['#D2CABA', 0.1]);
+  const cream = tone('#E5DBC7', ['#DBD0BA', 0.3]);
+  const base = TOP + 1, F = 5, top = base + 6 * F;
+  const main = block(16, 10, 55, 29, base, top, concrete, 'i2sysbio');
+  const louver = (y) => (y % 2 ? '#FBFBF8' : '#D3D5D2');
+  const facade = (f) => {
+    const [lo, hi] = span(main, f), s = side(main, f);
+    for (let a = lo; a <= hi; a++) for (let y = base; y <= top; y++) {
+      const pillar = (a - lo) % 10 < 2 || a >= hi - 1, slab = (y - base) % F === 0 || y === top;
+      if (pillar || slab) { put(...s(a, y, -1), concrete, 'i2sysbio'); continue; }
+      const k = (y - base) % F, down = hash(Math.floor((a - lo) / 10), Math.floor((y - base) / F), f.charCodeAt(0)) < 0.3;
+      if (k === 1 && !down) { const mull = (a - lo) % 10 === 6; put(...s(a, y, 0), mull ? P.white : '#5E7F94', 'i2sysbio', !mull); }
+      else put(...s(a, y, 0), louver(y), 'i2sysbio');
+    }
+  };
+  for (const f of ['S', 'N', 'E']) facade(f);
+  // the roof: gravel, its plant, and the grid going on up into an open frame
+  for (let x = 16; x <= 55; x++) for (let z = 10; z <= 29; z++) {
+    const edge = x === 16 || x === 55 || z === 10 || z === 29;
+    if (!edge) { put(x, top, z, hash(x, 6, z) < 0.3 ? '#BDB6A8' : '#C9C3B6', 'i2sysbio'); continue; }
+    if ((x - 16) % 10 < 2 || x >= 54 || (z - 10) % 10 < 2 || z >= 28) fill(x, top + 1, z, 1, 3, 1, concrete, 'i2sysbio');
+    put(x, top + 4, z, concrete, 'i2sysbio');
+  }
+  fill(30, top + 1, 15, 8, 2, 6, P.steel, 'i2sysbio'); fill(42, top + 1, 17, 5, 3, 5, P.steel2, 'i2sysbio');
+  // the tower at the west end, the way in at its foot
+  const tower = block(4, 8, 15, 31, base, top + 6, cream, 'i2sysbio');
+  paint(tower, 'S', 7, base + 6, 6, top - base - 4, (i, j) => (i === 0 || i === 5 || j % 4 === 0 ? [P.white, false] : ['#8FB6CE', true]));
+  recess(tower, 'S', 7, base, 6, 5, (i, j) => (j === 4 || i % 2 === 0 ? [P.frame, false] : [P.glass, true]));
+  for (let x = 5; x <= 14; x++) for (let z = 32; z <= 33; z++) put(x, base + 5, z, (x + z) % 2 ? P.steel2 : P.dark, 'i2sysbio');   // the perforated canopy
+  paint(tower, 'S', 4, base, 3, 10, (i) => (i % 2 ? null : [P.white, false]), -1);                                     // white fins beside the door
+  // pillars down to the falling ground: under the grid's columns, front and back, and along the middle
+  const pillars = [];
+  for (let x = 16; x <= 55; x += 10) for (const z of [9, 19, 29]) pillars.push([Math.min(x, 54), z]);
+  pillars.push([54, 9], [54, 19], [54, 29]);
+  for (const [x, z] of pillars) {
+    const g = Math.min(ground(x, z), ground(x + 1, z), ground(x, z + 1), ground(x + 1, z + 1));
+    if (g < base - 1) fill(x, g + 1, z, 2, base - 1 - g, 2, concrete, 'i2sysbio');
+  }
+  return b.finish({ pins: { i2sysbio: [36, top + 8, 20] } });
+}
+
 // ---- turning blocks into meshes ----
 // in strips across the board, so that what is out of view, or out of the sun's, is not drawn
 function meshesOf(city, solidMat, glowMat, strips = 4) {
@@ -1024,6 +1188,83 @@ function busOf(body, lit) {
   g.add(boxesOf(solid, body), boxesOf(glass, lit));
   return g;
 }
+// the tram of line 4: two white cars with red ends and a band of windows, a cab at each end of it,
+// a pantograph up to the wire on each
+function tramOf(body, lit) {
+  const red = '#D2232A', cars = [];
+  for (const cab of [1, -1]) {
+    const solid = [
+      [2.5, 0.28, 1.0, 0, 0.66, 0, P.dark], [2.62, 1.08, 1.26, 0, 1.3, 0, '#F4F4F0'], [2.64, 0.13, 1.28, 0, 0.83, 0, red],
+      [0.42, 1.1, 1.28, cab * 1.1, 1.3, 0, red], [2.4, 0.13, 1.08, 0, 1.9, 0, '#E4E4DF'], [0.5, 0.1, 0.5, 0, 2.0, 0, P.steel2],
+      [0.08, 1.15, 0.06, 0, 2.62, 0, P.dark], [0.1, 0.06, 0.9, 0, 3.22, 0, P.dark],
+      [0.26, 0.26, 1.29, -cab * 0.5, 1.07, 0, red], [0.12, 0.12, 1.3, -cab * 0.5, 1.07, 0, P.white],
+      [0.14, 0.9, 1.0, -cab * 1.36, 1.2, 0, '#3A3F46'],
+    ];
+    const glass = [
+      [1.9, 0.4, 1.28, -cab * 0.2, 1.46, 0, '#2E3844'], [0.06, 0.5, 1.0, cab * 1.33, 1.44, 0, '#2E3844'],
+      [0.06, 0.12, 0.22, cab * 1.33, 0.9, 0.4, '#FFF6C8'], [0.06, 0.12, 0.22, cab * 1.33, 0.9, -0.4, '#FFF6C8'],
+    ];
+    const g = new THREE.Group();
+    g.add(boxesOf(solid, body), boxesOf(glass, lit));
+    g.userData.vehicle = 'tram';
+    cars.push(g);
+  }
+  return cars;
+}
+// the tram's wire from x0 to x1, and poles at `poles` to hold it where the boards have none (the bridge)
+function wireOf(x0, x1, z, poles, body) {
+  const list = [[x1 - x0, 0.05, 0.05, (x0 + x1) / 2, 3.28, z, P.dark]];
+  for (const x of poles) list.push([0.14, 3.6, 0.14, x, 1.8, z - 1.4, P.dark], [0.1, 0.1, 1.6, x, 3.5, z - 0.7, P.dark]);
+  return boxesOf(list, body);
+}
+// the institute's sign on its lawn: a slab of weathered concrete, leaning back, with the logo in
+// teal relief (an i joined to a raised 2, then sys, then bio up high, thin lines with dots at their
+// ends running between them) and the University's and CSIC's names small in a corner. Drawn as
+// shapes, so that the view shrinks it smoothly instead of dropping lines of it; its ticket shows
+// the same drawing at full size.
+function signCanvas() {
+  const w = 384, h = 144, c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#C2BFB8'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1100; i++) { const x = hash(i, 1, 7) * w, y = hash(i, 2, 7) * h; g.fillStyle = hash(i, 3, 7) < 0.5 ? '#B3AFA7' : '#CDCAC4'; g.fillRect(x, y, 3, 3); }
+  const shade = g.createLinearGradient(0, h * 0.55, 0, h); shade.addColorStop(0, 'rgba(90,80,70,0)'); shade.addColorStop(1, 'rgba(90,80,70,0.28)');
+  g.fillStyle = shade; g.fillRect(0, 0, w, h);
+  const teal = '#1E98AC', relief = '#15606B';
+  const stroke = (width, draw) => {
+    for (const [d, col] of [[3, relief], [0, teal]]) {
+      g.save(); g.translate(d, d); g.strokeStyle = col; g.lineWidth = width; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath(); draw(); g.stroke(); g.restore();
+    }
+  };
+  const dot = (x, y, r = 7) => { for (const [d, col] of [[3, relief], [0, teal]]) { g.fillStyle = col; g.beginPath(); g.arc(x + d, y + d, r, 0, Math.PI * 2); g.fill(); } };
+  const S = (x, y) => () => { g.moveTo(x + 38, y + 8); g.bezierCurveTo(x + 28, y - 3, x + 3, y, x + 5, y + 15); g.bezierCurveTo(x + 7, y + 30, x + 40, y + 27, x + 40, y + 45); g.bezierCurveTo(x + 40, y + 62, x + 10, y + 62, x + 2, y + 50); };
+  // the thin lines first, then the letters over them
+  stroke(4, () => { g.moveTo(26, 40); g.lineTo(26, 122); g.moveTo(26, 94); g.lineTo(92, 94); g.moveTo(220, 76); g.lineTo(258, 76); g.moveTo(304, 30); g.lineTo(304, 108); g.moveTo(252, 6); g.lineTo(252, 30); });
+  stroke(12, () => { g.moveTo(42, 34); g.bezierCurveTo(44, 6, 90, 6, 88, 30); g.bezierCurveTo(86, 46, 54, 54, 44, 72); g.lineTo(92, 72); });   // the 2
+  stroke(12, S(94, 70)); stroke(12, S(186, 70));                                                                                          // s  s
+  stroke(12, () => { g.moveTo(142, 70); g.lineTo(142, 102); g.bezierCurveTo(142, 118, 174, 118, 174, 102); g.moveTo(174, 70); g.lineTo(174, 124); g.bezierCurveTo(174, 142, 144, 142, 142, 130); });   // y
+  stroke(12, () => { g.moveTo(252, 18); g.lineTo(252, 92); g.moveTo(252, 68); g.bezierCurveTo(254, 36, 294, 36, 294, 66); g.bezierCurveTo(294, 96, 254, 96, 252, 78); });   // b
+  stroke(12, () => { g.moveTo(304, 44); g.lineTo(304, 92); });                                                                          // i
+  stroke(12, () => { g.ellipse(342, 66, 22, 25, 0, 0, Math.PI * 2); });                                                                 // o
+  for (const [x, y] of [[26, 36], [26, 124], [92, 94], [220, 76], [304, 26], [304, 110], [252, 6]]) dot(x, y);
+  // the names in the corner
+  g.fillStyle = '#6F6B64'; g.font = '600 9px Georgia, serif';
+  g.fillText('VNIVERSITAT', 246, 126); g.fillText('DE VALÈNCIA', 246, 136);
+  g.fillStyle = '#4A4E55'; g.fillRect(318, 121, 1.5, 15); g.fillRect(324, 122, 7, 14);
+  g.font = '700 18px Helvetica, Arial, sans-serif'; g.fillText('CSIC', 334, 136);
+  return c;
+}
+function signOf(c) {
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const slab = new THREE.MeshLambertMaterial({ color: '#B4B1A9' }), face = new THREE.MeshLambertMaterial({ map: tex });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 0.35), [slab, slab, slab, slab, face, slab]);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.rotation.x = -0.3;
+  mesh.userData.tag = 'i2sysbio';
+  return mesh;
+}
 // the bridge over the gap between the two boards: a deck, two steel arches and their hangers, railings
 function bridgeOf(x0, x1, z0, z1, body) {
   const list = [], mid = (x0 + x1) / 2, half = (x1 - x0) / 2, steel = '#6F8FAF';
@@ -1041,17 +1282,28 @@ function bridgeOf(x0, x1, z0, z1, body) {
 }
 
 export function initCity(root, { lineages, ticket, onPick } = {}) {
-  // two boards: the tool city, and past a bridge to the east, Sagunt and its port
-  const city = buildTools(lineages), port = buildSagunto(lineages);
-  const SAG = 84;                                                                  // where Sagunt's board begins, along x
+  // three boards: the tool city (Valencia); past a bridge to the east, Sagunt and its port; past one
+  // to the west, the Parc Cientific in Paterna, where I2SysBio is
+  // (the institute on its own grid, turned; its pillars reach down to the Parc's ground beneath them)
+  const [ic, is] = [Math.cos(I2.turn), Math.sin(I2.turn)];
+  const underI2 = (x, z) => { const dx = x + 0.5 - 32, dz = z + 0.5 - 20; return siteH(Math.floor(I2.cx + dx * ic + dz * is), Math.floor(I2.cz - dx * is + dz * ic)); };
+  const city = buildTools(lineages), port = buildSagunto(lineages), parc = buildPaterna(), inst = buildI2(underI2);
+  const SAG = 84, PAT = -84;                                                       // where their boards begin, along x
   const O = (x, y, z) => new THREE.Vector3(x - city.W / 2, y, z - city.D / 2);   // city blocks to scene
   const scene = new THREE.Scene();
   const solidMat = new THREE.MeshLambertMaterial(), glowMat = new THREE.MeshLambertMaterial({ emissive: 0x000000 });
-  const boards = [[city, 0, 'tools'], [port, SAG, 'sagunto']].map(([c, dx, name]) => {
+  const boards = [[city, 0, 'tools'], [port, SAG, 'sagunto'], [parc, PAT, 'paterna']].map(([c, dx, name]) => {
     const parts = meshesOf(c, solidMat, glowMat);
     for (const m of parts) { m.position.x = dx; scene.add(m); }
     return { name, dx, meshes: parts, anchors: anchorsOf(c, dx) };
   });
+  {
+    const parts = meshesOf(inst, solidMat, glowMat, 1), at = O(PAT + I2.cx / 2, 0, I2.cz / 2);
+    for (const m of parts) { m.position.copy(at); m.rotation.y = I2.turn; m.updateMatrixWorld(); scene.add(m); }
+    const anchors = anchorsOf(inst);
+    for (const k in anchors) anchors[k].applyMatrix4(parts[0].matrixWorld);
+    boards.push({ name: 'paterna', meshes: parts, anchors });
+  }
   const meshes = boards.flatMap(b => b.meshes);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.25);
   const sun = new THREE.DirectionalLight(0xffffff, 1.9);
@@ -1115,24 +1367,45 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   scene.add(beam);
 
-  // ---- the yellow bus: it waits at a stop, and takes you over the bridge to the other city ----
-  const deck = bridgeOf(74, SAG, 46, 48, new THREE.MeshLambertMaterial(vc));
-  deck.position.copy(O(0, 0, 0)); scene.add(deck);
-  const bus = busOf(carBody, carLit);
-  scene.add(bus);
-  // the way to Sagunt ends past the roundabout at its port, the way back past the roundabout by the market
-  const roads = {
-    sagunto: pathOf([33, 47.5], [['to', 141, 47.5], ['turn', 141, 46, -1.5 * Math.PI], ['turn', 139, 46, Math.PI / 2], ['to', 136, 46.5]]),
-    tools: pathOf([136, 46.5], [['to', 29, 46.5], ['turn', 29, 46, Math.PI / 2], ['turn', 27, 46, -1.5 * Math.PI], ['to', 33, 47.5]]),
+  // ---- the yellow bus to Sagunt and the tram to Paterna: each waits at its stop in Valencia, and
+  // takes you over a bridge to the other city with the view behind it ----
+  for (const [x0, x1] of [[74, SAG], [PAT + 74, 0]]) { const d = bridgeOf(x0, x1, 46, 48, new THREE.MeshLambertMaterial(vc)); d.position.copy(O(0, 0, 0)); scene.add(d); }
+  const wire = wireOf(PAT + 25, 22.5, 47, [PAT + 77, PAT + 81], new THREE.MeshLambertMaterial(vc)); wire.position.copy(O(0, 0, 0)); scene.add(wire);
+  const bus = busOf(carBody, carLit), tram = tramOf(carBody, carLit);
+  bus.userData.vehicle = 'bus';
+  scene.add(bus, ...tram);
+  const signArt = signCanvas(), sign = signOf(signArt);
+  sign.position.copy(O(PAT + I2.sign[0] / 2, (TOP + 1) / 2 + 1.35, I2.sign[1] / 2)); sign.rotation.set(-0.3, I2.turn, 0, 'YXZ'); scene.add(sign);
+  // the ways: the bus to Sagunt past the roundabout at its port and back past the one by the
+  // market; the tram, with a cab at each end, straight there and back
+  const TRIPS = {
+    'tools>sagunto': { by: 'bus', road: pathOf([33, 47.5], [['to', 141, 47.5], ['turn', 141, 46, -1.5 * Math.PI], ['turn', 139, 46, Math.PI / 2], ['to', 136, 46.5]]) },
+    'sagunto>tools': { by: 'bus', road: pathOf([136, 46.5], [['to', 29, 46.5], ['turn', 29, 46, Math.PI / 2], ['turn', 27, 46, -1.5 * Math.PI], ['to', 33, 47.5]]) },
+    'tools>paterna': { by: 'tram', road: pathOf([14.5, 47], [['to', PAT + 37, 47]]) },
+    'paterna>tools': { by: 'tram', road: pathOf([PAT + 42.6, 47], [['to', 20.1, 47]]) },
   };
-  const CENTRE = { tools: 0, sagunto: SAG };
-  const trip = { road: roads.sagunto, u: 0, on: false, to: 'sagunto', speed: 0.75 };
-  function park(road, u) {
-    const [fx, fz] = pointOn(road, u + 0.95), [bx, bz] = pointOn(road, u - 0.95);
-    bus.position.copy(O((fx + bx) / 2, 0, (fz + bz) / 2));
-    bus.rotation.y = Math.atan2(-(fz - bz), fx - bx);
+  const CENTRE = { tools: 0, sagunto: SAG, paterna: PAT };
+  const trip = { leg: null, from: 'tools', to: 'tools', next: null, u: 0, on: false, speed: 0.75 };
+  // a vehicle `u` along a way: the bus on its two axles, the tram's cars on their bogies behind its front
+  function park(by, road, u) {
+    if (by === 'bus') {
+      const [fx, fz] = pointOn(road, u + 0.95), [bx, bz] = pointOn(road, u - 0.95);
+      bus.position.copy(O((fx + bx) / 2, 0, (fz + bz) / 2));
+      bus.rotation.y = Math.atan2(-(fz - bz), fx - bx);
+      return;
+    }
+    tram.forEach((car, k) => {
+      const c = u - 1.35 - k * 2.8;
+      const [fx, fz] = pointOn(road, c + BOGIE), [bx, bz] = pointOn(road, c - BOGIE);
+      car.position.copy(O((fx + bx) / 2, 0, (fz + bz) / 2));
+      car.rotation.y = Math.atan2(-(fz - bz), fx - bx);
+    });
   }
-  park(trip.road, 0);
+  // each waits at the start of its way out of the city in view
+  function rest() {
+    park('bus', TRIPS[view.city === 'sagunto' ? 'sagunto>tools' : 'tools>sagunto'].road, 0);
+    park('tram', TRIPS[view.city === 'paterna' ? 'paterna>tools' : 'tools>paterna'].road, 0);
+  }
 
   // ---- the view ----
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
@@ -1200,8 +1473,11 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function showCity() {
     for (const l of tags.values()) l.el.hidden = trip.on || l.city !== view.city;
     for (const [name, svg] of Object.entries(maps)) svg.toggleAttribute('hidden', name !== view.city);
-    busButton.setAttribute('aria-label', view.city === 'tools' ? 'Take the yellow bus to Sagunt, where my papers are' : 'Take the yellow bus back to the tools');
-    busButton.title = busButton.getAttribute('aria-label');
+    // the bus goes between Valencia and Sagunt, the tram between Valencia and Paterna
+    const say = (el, text) => { el.setAttribute('aria-label', text); el.title = text; };
+    busButton.hidden = view.city === 'paterna'; tramButton.hidden = view.city === 'sagunto';
+    say(busButton, view.city === 'sagunto' ? 'Take the yellow bus back to Valencia' : 'Take the yellow bus to Sagunt, where my papers are');
+    say(tramButton, view.city === 'paterna' ? 'Take the tram back to Valencia' : 'Take the tram to Paterna, where I work');
     dirty = true;
   }
   const card = document.createElement('div');
@@ -1217,6 +1493,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       + `<p class="city-ticket-name"><b>${esc(t.name)}</b>${t.kind ? ` <span>${esc(t.kind)}</span>` : ''}</p>`
       + (t.meta ? `<p class="city-ticket-meta">${esc(t.meta)}</p>` : '')
       + (t.title ? `<p class="city-ticket-title">${esc(t.title)}</p>` : '')
+      + (t.art === 'sign' ? `<img class="city-ticket-art" src="${signArt.toDataURL()}" width="${signArt.width}" height="${signArt.height}" alt="The I2SysBio sign on its lawn: i2sysbio in teal, with the University of Valencia and CSIC">` : '')
       + `<p class="city-ticket-desc">${esc(t.desc)}</p>`
       + (t.links && t.links.length ? `<p class="city-ticket-links">${t.links.map(k => `<a href="${esc(k.href)}" target="_blank" rel="noopener">${esc(k.label)}</a>`).join('')}</p>` : '');
     card.className = `city-ticket city-ticket--${l.line || 'none'}`;
@@ -1280,9 +1557,11 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects([...meshes, bus], true)[0];
-    if (hit && !hit.object.isInstancedMesh) return 'bus';
-    const t = hit ? hit.object.userData.tags[hit.instanceId] : '';
+    const hit = ray.intersectObjects([...meshes, bus, ...tram, sign], true)[0];
+    let o = hit && !hit.object.isInstancedMesh ? hit.object : null;
+    while (o && !o.userData.vehicle && !o.userData.tag) o = o.parent;
+    if (o && o.userData.vehicle) return o.userData.vehicle;
+    const t = o ? o.userData.tag : hit ? hit.object.userData.tags[hit.instanceId] : '';
     return tags.has(t) && tags.get(t).city === view.city ? t : '';
   }
   // dragging sideways turns the city, and with a mouse up and down tilts it (on a
@@ -1299,7 +1578,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     if (drag.mouse) { view.pitch = tilted(drag.pitch + dy * 0.006); view.pitchGoal = null; }
     dirty = true;
   });
-  canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t === 'bus') ride(); else if (t) open(t); else close(); } });
+  canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t === 'bus' || t === 'tram') board(t); else if (t) open(t); else close(); } });
   canvas.addEventListener('pointercancel', () => { drag = null; });
   canvas.addEventListener('pointerleave', () => { if (!drag) light(''); });
   // the arrows turn it a quarter at a time
@@ -1318,15 +1597,29 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   busButton.type = 'button';
   busButton.className = 'city-bus';
   busButton.innerHTML = '<svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1.5" width="14" height="7.5" rx="1.6" fill="#F4C430" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="3" width="7" height="2.4" fill="currentColor"/><rect x="11" y="3" width="2.4" height="3.4" fill="currentColor"/><circle cx="4.5" cy="9.6" r="1.5" fill="currentColor"/><circle cx="11.5" cy="9.6" r="1.5" fill="currentColor"/></svg>';
-  busButton.addEventListener('click', () => ride());
+  busButton.addEventListener('click', () => board('bus'));
   arrows.appendChild(busButton);
+  // and the tram, white with red ends
+  const tramButton = document.createElement('button');
+  tramButton.type = 'button';
+  tramButton.className = 'city-tram';
+  tramButton.innerHTML = '<svg viewBox="0 0 16 12" aria-hidden="true"><path d="M6 2 L8 0.4 L10 2" fill="none" stroke="currentColor" stroke-width="1"/><rect x="1" y="2" width="14" height="7" rx="1.8" fill="#F4F4F0" stroke="currentColor" stroke-width="1.2"/><rect x="11.4" y="2.6" width="3" height="5.8" rx="1.2" fill="#D2232A"/><rect x="2.4" y="3.6" width="8" height="2.2" fill="currentColor"/><rect x="1.6" y="7" width="9.8" height="1" fill="#D2232A"/><circle cx="4.5" cy="10" r="1.3" fill="currentColor"/><circle cx="11.5" cy="10" r="1.3" fill="currentColor"/></svg>';
+  tramButton.addEventListener('click', () => board('tram'));
+  arrows.appendChild(tramButton);
   stage.appendChild(arrows);
-  // a ride: the bus drives the road with the view behind it; with motion off, you are simply there
-  function ride() {
+  // on the bus or the tram: out of Valencia, or back
+  const board = (by) => ride(view.city === 'tools' ? (by === 'bus' ? 'sagunto' : 'paterna') : 'tools');
+  // a ride: the vehicle drives its way with the view behind it (between Sagunt and Paterna, by way of
+  // Valencia); with motion off, you are simply there
+  function ride(to) {
     if (trip.on) return;
+    const from = view.city;
+    to = to || (from === 'tools' ? 'sagunto' : 'tools');
+    if (to === from) return;
+    trip.next = from !== 'tools' && to !== 'tools' ? to : null;
+    if (trip.next) to = 'tools';
     close(); light('');
-    trip.to = view.city === 'tools' ? 'sagunto' : 'tools';
-    trip.road = roads[trip.to]; trip.u = 0;
+    Object.assign(trip, { leg: TRIPS[`${from}>${to}`], from, to, u: 0 });
     const still = typeof animSpeed === 'number' && animSpeed <= 0;
     if (still) { arrive(); view.cx = CENTRE[view.city]; view.cxGoal = null; return; }
     trip.on = true;
@@ -1334,10 +1627,10 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   function arrive() {
     trip.on = false; view.city = trip.to;
-    trip.road = roads[view.city === 'tools' ? 'sagunto' : 'tools']; trip.u = 0;
-    park(trip.road, 0);
+    rest();
     view.cxGoal = CENTRE[view.city];
     showCity();
+    if (trip.next) { const next = trip.next; trip.next = null; setTimeout(() => ride(next), 300); }
   }
 
   // ---- the map of the lines, in a corner: the same city without buildings ----
@@ -1365,18 +1658,27 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     ${stop('snpick', 104, 70, 'snpick', true)}${stop('distree', 200, 70, 'distree')}${stop('fstic', 118, 91, 'fstic', true)}
     ${stop('mycolorsTB', 212, 110, 'mycolorsTB', true)}${stop('karyon', 272, 110, 'karyon', true, true)}
     <g class="city-map-trains"></g>
-    <g class="city-map-bus"><title>the yellow bus to Sagunt</title><path d="M118 110 V132 H250" stroke="${P.bus}"/><rect x="250" y="125" width="38" height="14" rx="7"/><text x="269" y="135" text-anchor="middle">Sagunt</text></g>
+    <g class="city-map-bus" data-go="sagunto"><title>the yellow bus to Sagunt</title><path d="M118 110 V132 H250" stroke="${P.bus}"/><rect x="250" y="125" width="38" height="14" rx="7"/><text x="269" y="135" text-anchor="middle">Sagunt</text></g>
+    <g class="city-map-tram" data-go="paterna"><title>the tram to Paterna</title><path d="M51 116 V132 H46" stroke="#2C4A9A"/><rect x="4" y="125" width="42" height="14" rx="7"/><text x="25" y="135" text-anchor="middle">Paterna</text></g>
   </svg>
   <svg class="city-map-sagunto" viewBox="0 0 292 140" role="presentation">
     <path class="city-map-sea" d="M244 0 C236 36 248 84 238 140 H292 V0 Z"/>
     <path class="city-map-hill" d="M4 46 C24 16 94 4 176 20 C190 22 192 34 178 36 C120 30 60 38 6 58 Z"/>
-    <g class="city-map-bus"><title>the yellow bus back to the tools</title><path d="M42 132 H226" stroke="${P.bus}"/><circle cx="230" cy="128" r="5" fill="none" stroke="${P.bus}" stroke-width="3"/><rect x="4" y="125" width="38" height="14" rx="7"/><text x="23" y="135" text-anchor="middle">tools</text></g>
+    <g class="city-map-bus" data-go="tools"><title>the yellow bus back to Valencia</title><path d="M46 132 H226" stroke="${P.bus}"/><circle cx="230" cy="128" r="5" fill="none" stroke="${P.bus}" stroke-width="3"/><rect x="4" y="125" width="42" height="14" rx="7"/><text x="25" y="135" text-anchor="middle">Valencia</text></g>
     ${stop('castell', 84, 24, 'castell', true)}${stop('masia', 148, 84, 'masia', true)}${stop('alt-forn', 206, 28, 'alt forn', true)}
     ${stop('hospital', 206, 72, 'hospital', true)}${stop('platja', 232, 106, 'platja')}
     <text class="city-map-town" x="46" y="100">Sagunt</text><text class="city-map-town" x="172" y="120">el Port</text>
+  </svg>
+  <svg class="city-map-paterna" viewBox="0 0 292 140" role="presentation">
+    <rect class="city-map-hill" x="40" y="56" width="200" height="44" rx="3"/>
+    <rect class="city-map-block" x="60" y="30" width="150" height="40" rx="2"/><rect class="city-map-block" x="46" y="26" width="18" height="48" rx="2"/>
+    <path d="M40 104 H244" class="city-map-edge"/>
+    <g class="city-map-tram" data-go="tools"><title>the tram back to Valencia</title><path d="M96 124 H246" stroke="#2C4A9A"/><rect x="100" y="119" width="46" height="10" rx="2" class="city-map-platform"/><rect x="246" y="117" width="42" height="14" rx="7"/><text x="267" y="127" text-anchor="middle">Valencia</text></g>
+    ${stop('i2sysbio', 130, 50, 'I2SysBio', true)}${stop('xarxa', 176, 86, 'researchers map', true)}
+    <text class="city-map-town" x="14" y="16">Parc Cientific, Paterna</text><text class="city-map-town" x="150" y="114">Santa Gemma</text>
   </svg>`;
-  const maps = { tools: map.querySelector('.city-map-tools'), sagunto: map.querySelector('.city-map-sagunto') };
-  map.querySelectorAll('.city-map-bus').forEach(g => g.addEventListener('click', (e) => { e.stopPropagation(); ride(); }));
+  const maps = { tools: map.querySelector('.city-map-tools'), sagunto: map.querySelector('.city-map-sagunto'), paterna: map.querySelector('.city-map-paterna') };
+  map.querySelectorAll('.city-map-bus, .city-map-tram').forEach(g => g.addEventListener('click', (e) => { e.stopPropagation(); ride(g.dataset.go); }));
   stage.appendChild(map);
   map.querySelectorAll('.city-map-stop').forEach(g => {
     const tag = g.dataset.tag;
@@ -1475,12 +1777,13 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       dirty = true;
     }
     if (trip.on) {
-      const L = trip.road.L, ease = Math.max(0.15, Math.min(1, trip.u / 5 + 0.15, (L - trip.u) / 5 + 0.1));
+      const { by, road } = trip.leg, L = road.L, ease = Math.max(0.15, Math.min(1, trip.u / 5 + 0.15, (L - trip.u) / 5 + 0.1));
       trip.u = Math.min(L, trip.u + trip.speed * ease * ds);
-      park(trip.road, trip.u);
-      // the view goes one way only, behind the bus, and no further than the city it is going to
-      const x = Math.max(CENTRE.tools, Math.min(CENTRE.sagunto, bus.position.x)), was = view.cxGoal ?? view.cx;
-      view.cxGoal = trip.to === 'sagunto' ? Math.max(was, x) : Math.min(was, x);
+      park(by, road, trip.u);
+      // the view goes one way only, behind the vehicle, and no further than the city it is going to
+      const [a, z] = [CENTRE[trip.from], CENTRE[trip.to]], at = (by === 'bus' ? bus : tram[0]).position.x;
+      const x = Math.max(Math.min(a, z), Math.min(Math.max(a, z), at)), was = view.cxGoal ?? view.cx;
+      view.cxGoal = z > a ? Math.max(was, x) : Math.min(was, x);
       if (trip.u >= L) arrive();
       dirty = true;
     }
@@ -1499,8 +1802,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     placeMapTrains();
   }
   window.addEventListener('resize', resize);
-  resize(); theme(); showCity(); place(); move(0, 0);
+  resize(); theme(); rest(); showCity(); place(); move(0, 0);
   requestAnimationFrame(frame);
   // for the page's own tests: the clock the moving things keep, the ride, the city in view
-  return { tags, view, open, close, light, ride, bus: trip, redraw: () => { dirty = true; }, get clock() { return t; }, get riding() { return trip.on; } };
+  return { tags, view, open, close, light, ride, trip, redraw: () => { dirty = true; }, get clock() { return t; }, get riding() { return trip.on; } };
 }

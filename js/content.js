@@ -238,6 +238,11 @@ const SAGUNTO_STOPS = [
   { tag: 'alt-forn', doi: '10.1371/journal.ppat.1010631', name: 'PLOS Pathogens, 2022', line: 'cov', sub: 'A222V opens the spike' },
   { tag: 'platja', doi: '10.1128/mBio.02315-21', name: 'mBio, 2021', line: 'cov', sub: 'mutations that kept coming back' },
 ];
+// Paterna, past the bridge the other way, by tram: the Parc Cientific and I2SysBio, where I work.
+const PATERNA_STOPS = [
+  { tag: 'i2sysbio', name: 'I2SysBio', line: 'tram', sub: 'where I work' },
+  { tag: 'xarxa', name: 'Researchers map', line: 'tram', sub: 'who works with whom' },
+];
 
 const MYCOLORS_TB = {
   L1: '#ff3091', L2: '#001aff', L3: '#8a0bd2', L4: '#ff0000', L5: '#995200', L6: '#1eb040', L7: '#fbff00',
