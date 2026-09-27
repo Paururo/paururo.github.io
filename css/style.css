@@ -480,6 +480,8 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 }
 .more-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; font-family: var(--font-hand); font-weight: 700; font-size: 25px; color: var(--terra-ink); }
 .more-link i { font-size: 15px; }
+.led-papers .more-link { display: flex; width: fit-content; }
+.led-papers .more-link + .more-link { margin-top: 4px; }
 
 /* ==================== BACKGROUND ==================== */
 .chromosome-wrap { overflow-x: auto; margin: 0 -10px; padding: 6px 10px 2px; scrollbar-width: thin; }
@@ -717,6 +719,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-label.lit small, .city-label:focus-visible small { display: block; }
 .city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
 .city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
+.city-label--tb { --c: var(--terra); } .city-label--cov { --c: var(--sage); }
 .city-ticket {
   position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
   background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
@@ -727,6 +730,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-ticket-name b { font-size: 16px; }
 .city-ticket-name span { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 11.5px; color: var(--ochre-ink); }
 .city-ticket-meta { color: var(--muted); font-size: 12px; margin: 1px 0 5px !important; }
+.city-ticket-title { font-weight: 600; margin-bottom: 4px !important; }
 .city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
 .city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
 .city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
@@ -744,7 +748,18 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .city-map-stop .city-map-term { fill: var(--ink); }
 .city-map-stop.lit circle, .city-map-stop.lit rect, .city-map-stop:hover circle, .city-map-stop:hover rect { fill: var(--note); stroke-width: 2.6; }
 .city-map-trains rect { stroke: var(--ink); stroke-width: 1; }
+/* the yellow bus's road on each map, and Sagunt's hill and sea */
+.city-map-bus { cursor: pointer; }
+.city-map-bus path { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.city-map-bus rect { fill: #F4C430; stroke: var(--ink); stroke-width: 2; }
+.city-map-bus:hover rect { fill: #FFD95A; }
+.city-map-bus text { fill: #26292D; }
+.city-map .city-map-town { font: italic 400 10px var(--font-body); fill: var(--muted); }
+.city-map-hill { fill: color-mix(in srgb, #C9B98A 45%, var(--card)); }
+.city-map-sea { fill: color-mix(in srgb, #4F9CC8 35%, var(--card)); }
 .city-turn button { width: 32px; height: 30px; font-size: 15px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.city-turn .city-bus { width: 40px; padding: 0; background: #FFF1B8; color: #26292D; }
+.city-turn .city-bus svg { display: block; width: 24px; height: 18px; margin: 0 auto; }
 /* while the city is up, the cards and the repositories wait under a button */
 .city-list-toggle { display: none; margin: 0 auto 8px; }
 .city-on .city-list-toggle { display: table; }

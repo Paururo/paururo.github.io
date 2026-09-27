@@ -67,7 +67,7 @@ const PAGE_PARTS = [
   'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup',
   'initCoconut', 'initPolar', 'initHelices', 'initGenomeRuler', 'scatterBugs',
   'initStatBubbles', 'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
-  'initToolCity', 'fetchToolDownloads',
+  'initToolCity', 'initBusLink', 'fetchToolDownloads',
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -199,7 +199,26 @@ const CITY_LINES = {
   fstic: 'yellow line', mycolorsTB: 'purple line', BAMpiro: 'where every line meets',
 };
 // what a building's ticket says, with today's numbers
+// a paper's citations, from its row on the departures board once they have come in
+function citationsOf(doi) {
+  const badge = [...document.querySelectorAll('.citation-badge[data-doi]')].find(b => b.dataset.doi.toLowerCase() === doi.toLowerCase());
+  const n = badge ? parseInt(badge.textContent, 10) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
 function toolTicket(tag) {
+  // a paper I led, in Sagunt
+  const place = SAGUNTO_STOPS.find(s => s.tag === tag);
+  const work = place && SELECTED_WORK.find(w => w.doi === place.doi);
+  if (work) {
+    const plain = (html) => html.replace(/<[^>]+>/g, '');
+    const cites = citationsOf(work.doi);
+    return {
+      name: place.name, kind: work.role,
+      meta: [plain(work.venue), cites !== null && `${cites} citation${cites === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
+      title: plain(work.title), desc: plain(work.summary),
+      links: [{ label: work.preprint ? 'preprint' : 'paper', href: `https://doi.org/${work.doi}` }, ...(work.links || []).map(l => ({ label: l.label.toLowerCase(), href: l.url }))],
+    };
+  }
   const tool = FEATURED_TOOLS.find(t => t.name === tag);
   if (tool) {
     const dl = tool.bioconda && toolDownloads[tool.bioconda];
@@ -234,7 +253,9 @@ function initToolCity() {
   const probe = document.createElement('canvas');
   if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
   // the city takes its room now, so nothing below it moves when it arrives
-  chips.innerHTML = CITY_STOPS.map(s => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`).join('');
+  // (Sagunt's names wait hidden: the city starts at the tools, and on a phone nothing may move when it arrives)
+  const chip = (s, far) => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"${far ? ' hidden' : ''}><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`;
+  chips.innerHTML = CITY_STOPS.map(s => chip(s, false)).join('') + SAGUNTO_STOPS.map(s => chip(s, true)).join('');
   box.hidden = false;
   section.classList.add('city-on');
   toggle.addEventListener('click', () => {
@@ -254,6 +275,24 @@ function initToolCity() {
     if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); }
   }, { rootMargin: '900px 0px' });
   io.observe(section);
+}
+
+// the papers I led, as a link to them in the city: down to it, and on the bus to Sagunt
+function initBusLink() {
+  const link = document.getElementById('toSagunt'), box = document.getElementById('toolCity');
+  if (!link || !box || box.hidden) return;                   // no city here: the list above is all there is
+  link.hidden = false;
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    box.scrollIntoView({ behavior: PREFERS_REDUCED_MOTION ? 'auto' : 'smooth', block: 'center' });
+    let tries = 0;
+    const go = () => {
+      if (box.hidden) return;                                 // the city did not start after all
+      if (!box.city) { if (++tries < 60) setTimeout(go, 200); return; }
+      if (box.city.view.city !== 'sagunto') setTimeout(() => box.city.ride(), 450);
+    };
+    go();
+  });
 }
 
 // ==================== EXPANDABLE HELIX CARDS ====================

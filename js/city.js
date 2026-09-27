@@ -18,6 +18,10 @@ const P = {
   wood: '#9C6B43', wood2: '#83573A', plank: '#B98A5C', roof: '#6E5A4E', roof2: '#5F4D42',
   leaf: '#56A452', leaf2: '#468F45', leaf3: '#6CB85E', pine: '#3E7E4B', pine2: '#336B3F',
   trunk: '#7A5436', skin: '#F0C8A0', hair: '#4A3426', steel: '#8D949C', steel2: '#747B84', black: '#26292D', light: '#FFE38A',
+  // Sagunt and its port
+  tapial: '#D8C39A', tapial2: '#C8B089', dry: '#A9A25E', dry2: '#9A9451', dry3: '#B9B374', tile: '#C2653E', tile2: '#AA5533',
+  sand: '#EBD9A9', sand2: '#E1CC98', sea: '#4F9CC8', sea2: '#3F8BBA', sea3: '#72B6DB', foam: '#E9F3F7', deep: '#2E6B98',
+  rust: '#8A5236', rust2: '#6E4230', iron: '#4B5159', asphalt: '#5D6067', asphalt2: '#66696F', orange: '#F28C28', bus: '#F4C430',
 };
 const LINES = { red: P.red, blue: P.blue, green: P.green, ochre: P.ochre, plum: P.plum };
 const BASES = ['#6BD88E', '#FF7A6B', '#7FA8FF', '#FFD166'];
@@ -67,12 +71,29 @@ function pointOn(r, u) {
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
 }
 
-// ---- the city, block by block ----
-// Two blocks to a unit of the scene, so the board is 148 blocks by 96. A building
+// a road from `start` along legs: ['to', x, z] runs straight there, ['turn', cx, cz, angle]
+// turns round a centre by an angle; measured along its length like a railway route
+function pathOf(start, legs) {
+  const pts = [start];
+  let [x, z] = start;
+  for (const leg of legs) {
+    if (leg[0] === 'to') { [x, z] = [leg[1], leg[2]]; pts.push([x, z]); continue; }
+    const [, cx, cz, turn] = leg, r = Math.hypot(x - cx, z - cz), t0 = Math.atan2(z - cz, x - cx);
+    const n = Math.max(4, Math.ceil(Math.abs(turn) * r * 4));
+    for (let k = 1; k <= n; k++) { const t = t0 + turn * k / n; pts.push([cx + Math.cos(t) * r, cz + Math.sin(t) * r]); }
+    [x, z] = pts[pts.length - 1];
+  }
+  const len = [0];
+  for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  return { pts, len, L: len[len.length - 1] };
+}
+
+// ---- a board of blocks, and the ways to build on it ----
+// Two blocks to a unit of the scene, so a board is 148 blocks by 96. A building
 // is filled solid (only the blocks that can be seen become meshes), then carved
 // and trimmed: windows sit a block deep over a sill, roofs step up a block at a time.
-function buildCity(lineages) {
-  const S = 2, W = 148, D = 96, LOW = 8, H = 64;
+function makeBoard(W = 148, D = 96) {
+  const S = 2, LOW = 8, H = 64;
   const n = W * D * H;
   const cells = new Uint16Array(n), tagOf = new Uint8Array(n), glowOf = new Uint8Array(n);
   const colors = [null], colorIds = new Map(), tagNames = [''], tagIds = new Map([['', 0]]);
@@ -163,25 +184,20 @@ function buildCity(lineages) {
     }
   }
 
-  // ---- the board: grass over a turf edge and layers of earth ----
-  const grass = tone(P.grass, [P.grass2, 0.16], [P.grass3, 0.05]);
-  const earth = tone(P.dirt, [P.dirt2, 0.12], [P.pebble, 0.05]);
-  const deep = tone(P.dirt2, [P.dirt, 0.1], [P.pebble, 0.04]);
-  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
-    put(x, -1, z, grass); put(x, -2, z, P.turf);
-    put(x, -3, z, earth); put(x, -4, z, earth); put(x, -5, z, deep); put(x, -6, z, deep);
-  }
-  // squares and yards
-  const pave = tone(P.pave, [P.pave2, 0.3]);
-  ground(30, 28, 40, 40, pave);                                                          // round the station
-  ground(56, 68, 6, 4, pave);                                                            // from its door to the market
-  ground(72, 54, 22, 14, tone(P.pave2, [P.pave3, 0.3]));                                 // the snpick yard
-  ground(56, 72, 28, 20, (x, y, z) => (((x >> 1) + (z >> 1)) % 2 ? P.pave : P.pave2));   // the market square
-  ground(4, 68, 28, 24, tone(P.pave2, [P.pave3, 0.25]));                                 // the depot yard
-  ground(132, 76, 14, 14, tone(P.dirt, [P.dirt2, 0.3], [P.pebble, 0.06]));               // the building site
 
-  // ---- the lines: two rails either side of a stripe in the line's colour, sleeper ends peeping out,
-  // round the curves as well as along the straights ----
+  // the board itself: grass over a turf edge and layers of earth
+  function lawn() {
+    const grass = tone(P.grass, [P.grass2, 0.16], [P.grass3, 0.05]);
+    const earth = tone(P.dirt, [P.dirt2, 0.12], [P.pebble, 0.05]);
+    const deep = tone(P.dirt2, [P.dirt, 0.1], [P.pebble, 0.04]);
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
+      put(x, -1, z, grass); put(x, -2, z, P.turf);
+      put(x, -3, z, earth); put(x, -4, z, earth); put(x, -5, z, deep); put(x, -6, z, deep);
+    }
+  }
+
+  // railway track: two rails either side of a stripe in the line's colour, sleeper ends peeping out,
+  // round the curves as well as along the straights
   const ballast = tone(P.ballast, [P.ballast2, 0.35]);
   function lay(route, color, from, to) {
     const mid = new Map(), rails = new Set(), ends = new Set();
@@ -207,6 +223,62 @@ function buildCity(lineages) {
     const cx = Math.floor(x * 2), cz = Math.floor(z * 2), across = Math.abs(x - x0) > Math.abs(z - z0);
     for (let k = -1; k <= 1; k++) { const bx = cx + (across ? 0 : k), bz = cz + (across ? k : 0); put(bx, 0, bz, P.dark); put(bx, 1, bz, k ? P.red : P.white); }
   }
+
+  // the bus road along the south edge (blocks x0 to x1, rows 92 to 95), a roundabout to turn in, a stop
+  const asphalt = tone(P.asphalt, [P.asphalt2, 0.25]);
+  function road(x0, x1) { for (let x = x0; x <= x1; x++) for (let z = 92; z <= 95; z++) put(x, -1, z, asphalt); }
+  function roundabout(cx, cz) {
+    for (let x = cx - 6; x <= cx + 6; x++) for (let z = cz - 6; z <= cz + 6; z++) {
+      const r = Math.hypot(x + 0.5 - cx, z + 0.5 - cz);
+      if (r <= 5.4) put(x, -1, z, r < 1.6 ? P.grass : asphalt);
+      if (r >= 1.6 && r < 2.3) put(x, 0, z, P.stone);
+    }
+    fill(cx - 1, 0, cz - 1, 2, 1, 2, P.grass2); fill(cx - 1, 1, cz - 1, 2, 1, 2, FLOWERS[1]);
+  }
+  function shelter(x, z) {
+    for (const dx of [0, 4]) fill(x + dx, 0, z, 1, 4, 1, P.steel2);
+    fill(x, 4, z - 1, 5, 1, 2, P.bus);
+    fill(x + 1, 1, z, 3, 1, 1, P.plank);
+    fill(x + 5, 0, z + 1, 1, 5, 1, P.steel2); put(x + 5, 5, z + 1, P.bus); put(x + 5, 6, z + 1, P.bus);
+  }
+
+  // the last touches, then only the blocks that can be seen
+  function finish(extra) {
+    // flowers and tufts in the grass
+    for (let x = 1; x < W - 1; x++) for (let z = 1; z < D - 1; z++) {
+      if (!isGrass(x, z) || colorAt(x, 0, z)) continue;
+      const r = hash(x, 1, z);
+      if (r < 0.012) put(x, 0, z, FLOWERS[Math.floor(hash(x, 2, z) * FLOWERS.length)]);
+      else if (r < 0.04) put(x, 0, z, P.turf);
+    }
+    // only the blocks that can be seen: nothing is ever seen from below
+    const filled = (x, y, z) => inside(x, y, z) && cells[at(x, y, z)] > 0;
+    const list = [];
+    for (let y = -LOW; y < H - LOW; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+      const i = at(x, y, z), id = cells[i];
+      if (!id) continue;
+      if (filled(x, y + 1, z) && filled(x - 1, y, z) && filled(x + 1, y, z) && filled(x, y, z - 1) && filled(x, y, z + 1)) continue;
+      list.push({ x, y, z, c: colors[id], tag: tagNames[tagOf[i]], glow: glowOf[i] === 1 });
+    }
+    return { list, S, W: W / S, D: D / S, ...extra };
+  }
+  return { W, D, put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lawn, lay, bumper, ballast, road, roundabout, shelter, finish };
+}
+
+// ---- the tool city ----
+function buildTools(lineages) {
+  const b = makeBoard();
+  const { put, colorAt, del, fill, ground, isGrass, block, side, span, paint, recess, flat, windowIn, windows, ledge, quoins, pitched, clump, lay, bumper, ballast, road, roundabout, shelter } = b;
+  b.lawn();
+  // squares and yards
+  const pave = tone(P.pave, [P.pave2, 0.3]);
+  ground(30, 28, 40, 40, pave);                                                          // round the station
+  ground(56, 68, 6, 4, pave);                                                            // from its door to the market
+  ground(72, 54, 22, 14, tone(P.pave2, [P.pave3, 0.3]));                                 // the snpick yard
+  ground(56, 72, 28, 20, (x, y, z) => (((x >> 1) + (z >> 1)) % 2 ? P.pave : P.pave2));   // the market square
+  ground(4, 68, 28, 24, tone(P.pave2, [P.pave3, 0.25]));                                 // the depot yard
+  ground(132, 76, 14, 14, tone(P.dirt, [P.dirt2, 0.3], [P.pebble, 0.06]));               // the building site
+
   // how far a train may go: `lo` for its tail (into the station's arch), `hi` for its nose (up to the buffers)
   const routes = {};
   const line = (name, pts, lo = -1) => {
@@ -503,7 +575,7 @@ function buildCity(lineages) {
   // a barrier with a sign, cones, and someone in a hard hat
   for (let x = 132; x <= 145; x++) { put(x, 1, 90, (x >> 1) % 2 ? P.red : P.white, 'karyon'); if ((x - 132) % 4 === 0) put(x, 0, 90, P.dark, 'karyon'); }
   paint({ x0: 137, x1: 140, z0: 90, z1: 90, tag: 'karyon' }, 'S', 137, 2, 4, 3, (i, j) => [(i + j) % 2 ? P.ochre : P.black, false], 0);
-  for (const [x, z] of [[130, 92], [147, 91]]) { put(x, 0, z, '#EE7D34'); put(x, 1, z, P.white); }
+  for (const [x, z] of [[131, 91], [146, 91]]) { put(x, 0, z, '#EE7D34'); put(x, 1, z, P.white); }
 
   // ---- the depot, where the older wagons rest ----
   const shed = block(6, 70, 29, 81, 0, 9, brick, 'depot');
@@ -553,43 +625,304 @@ function buildCity(lineages) {
     for (let y = 2; y < 2 + h; y++) { const r = 0.9 + (2 + h - y) * 0.42; for (let dx = -4; dx <= 5; dx++) for (let dz = -4; dz <= 5; dz++) if (Math.hypot(dx - 0.5, dz - 0.5) <= r) put(x + dx, y, z + dz, (y + dx + dz) % 3 ? P.pine : P.pine2); }
   };
   [[6, 6, 5, 0], [18, 10, 6, 1], [28, 6, 4, 0], [56, 6, 6, 1], [68, 20, 5, 0], [98, 6, 7, 1], [112, 8, 5, 0], [132, 10, 6, 1],
-    [140, 22, 4, 0], [6, 22, 7, 1], [24, 24, 5, 0], [140, 60, 6, 0], [86, 70, 4, 1], [40, 86, 6, 0], [50, 91, 5, 1]].forEach(([x, z, h, p]) => (p ? pine : tree)(x, z, h));
-  for (const [x, z] of [[2, 30], [26, 62], [128, 46], [144, 50], [60, 94], [106, 93], [12, 60]]) clump(x + 0.5, 0.6, z + 0.5, 1.9, 1.5, 1.9, leaves, '', 0.5);
+    [140, 22, 4, 0], [6, 22, 7, 1], [24, 24, 5, 0], [140, 60, 6, 0], [86, 70, 4, 1], [40, 86, 6, 0], [44, 84, 5, 1]].forEach(([x, z, h, p]) => (p ? pine : tree)(x, z, h));
+  for (const [x, z] of [[2, 30], [26, 62], [128, 46], [144, 50], [12, 60]]) clump(x + 0.5, 0.6, z + 0.5, 1.9, 1.5, 1.9, leaves, '', 0.5);
   const lamp = (x, z) => { fill(x, 0, z, 1, 8, 1, P.dark); put(x, 8, z, P.light, '', true); put(x, 9, z, P.dark); };
-  [[70, 44], [94, 44], [118, 44], [42, 24], [54, 70], [132, 66], [56, 90], [84, 72]].forEach(([x, z]) => lamp(x, z));
+  [[70, 44], [94, 44], [118, 44], [42, 24], [54, 70], [132, 66], [84, 72], [96, 91], [128, 91]].forEach(([x, z]) => lamp(x, z));
   // signals where the lines leave the station
   for (const [x, z] of [[68, 35], [68, 55], [46, 26], [53, 67]]) { fill(x, 0, z, 1, 5, 1, P.dark); put(x, 5, z, '#58D08A', '', true); put(x, 6, z, '#EF5A4C', '', true); put(x, 7, z, P.black); }
   const person = (x, z, shirt, hair = P.hair) => { put(x, 0, z, P.dark); put(x, 1, z, shirt); put(x, 2, z, P.skin); if (hair) put(x, 3, z, hair); };
   [[60, 83, P.red], [62, 85, P.red, '#D9A441'], [72, 84, P.blue], [74, 83, P.blue, null], [79, 85, P.ochre], [66, 82, P.ochre, '#8A4B2E'],
     [52, 60, P.green], [100, 73, P.plum], [58, 69, P.blue, '#D9A441'], [57, 66, P.white], [110, 74, P.green, '#8A4B2E'],
-    [139, 92, '#EE7D34', P.ochre], [83, 88, P.plum], [26, 84, P.stone, null], [118, 90, lin(3)]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
+    [139, 91, '#EE7D34', P.ochre], [83, 88, P.plum], [26, 84, P.stone, null], [118, 90, lin(3)]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
 
-  // ---- flowers and tufts in the grass ----
-  for (let x = 1; x < W - 1; x++) for (let z = 1; z < D - 1; z++) {
-    if (!isGrass(x, z) || colorAt(x, 0, z)) continue;
-    const r = hash(x, 1, z);
-    if (r < 0.012) put(x, 0, z, FLOWERS[Math.floor(hash(x, 2, z) * FLOWERS.length)]);
-    else if (r < 0.04) put(x, 0, z, P.turf);
-  }
+  // ---- the road to Sagunt: the yellow bus waits by the market, and turns at the roundabout ----
+  road(55, 147); roundabout(54, 92); shelter(62, 90);
 
-  // only the blocks that can be seen: nothing is ever seen from below
-  const filled = (x, y, z) => inside(x, y, z) && cells[at(x, y, z)] > 0;
-  const list = [];
-  for (let y = -LOW; y < H - LOW; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
-    const i = at(x, y, z), id = cells[i];
-    if (!id) continue;
-    if (filled(x, y + 1, z) && filled(x - 1, y, z) && filled(x + 1, y, z) && filled(x, y, z - 1) && filled(x, y, z + 1)) continue;
-    list.push({ x, y, z, c: colors[id], tag: tagNames[tagOf[i]], glow: glowOf[i] === 1 });
-  }
   // where a label goes when the middle of the top of its blocks is not the place (the crane would lift it too high)
   const pins = { karyon: [139, 14, 83] };
-  return { list, S, W: W / S, D: D / S, routes, lighthouse, pins };
+  return b.finish({ routes, lighthouse, pins });
+}
+
+// ---- Sagunt and its port, where the papers I led live ----
+// The castle along the top of its hill, the Roman theatre in the slope, the old
+// town at its foot, orange groves with a farm, and el Port: the blast furnace,
+// the hospital and its water works, the harbour, the beach and the sea. The road
+// comes in from the tool city along the south edge.
+function buildSagunto(lineages) {
+  const b = makeBoard();
+  const { W, D, put, colorAt, del, fill, ground, block, side, span, paint, recess, flat, windowIn, windows, ledge, pitched, clump, road, roundabout, shelter } = b;
+  b.lawn();
+  const at = (x, z) => z * W + x;
+
+  // ---- the hill: a ridge along the north, a long slope down to the town ----
+  const crest = (x) => 12 + Math.round(Math.sin(x / 19) * 1.5);
+  const hh = new Int16Array(W * D);
+  for (let x = 0; x < 98; x++) for (let z = 0; z < 48; z++) {
+    const rise = Math.min(1, x / 14) * Math.min(1, Math.max(0, (97 - x) / 18));
+    const dz = z - crest(x), t = Math.max(0, 1 - (dz / (dz > 0 ? 28 : 15)) ** 2);
+    hh[at(x, z)] = Math.max(0, Math.round(rise * t * (18 + Math.sin(x / 6.5) * 2.5) + (hash(x, 5, z) - 0.5) * 1.2));
+  }
+  // the Roman theatre, its rows of seats cut into the slope, facing the town
+  const TX = 38, TZ = 42;
+  for (let x = TX - 14; x <= TX + 14; x++) for (let z = TZ - 14; z < TZ; z++) {
+    const r = Math.hypot(x + 0.5 - TX, z + 0.5 - TZ);
+    if (r <= 12.6) hh[at(x, z)] = r < 4 ? 0 : Math.min(11, Math.floor((r - 4) / 0.8) + 1);
+  }
+  const dry = tone(P.dry, [P.dry2, 0.3], [P.dry3, 0.15]);
+  const rock = tone(P.stone, [P.stone2, 0.4], [P.pebble, 0.15]);
+  const seat = (x, y, z) => (y % 2 ? '#D9D0BE' : '#C7BCA7');
+  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
+    const h = hh[at(x, z)];
+    if (!h) continue;
+    const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dz]) => hh[at(Math.min(W - 1, Math.max(0, x + dx)), Math.min(D - 1, Math.max(0, z + dz)))]);
+    const steep = Math.max(...n.map(v => Math.abs(v - h))) >= 2;
+    const inTheatre = Math.hypot(x + 0.5 - TX, z + 0.5 - TZ) <= 12.6 && z < TZ;
+    for (let y = 0; y < h; y++) put(x, y, z, inTheatre ? seat : y === h - 1 && !steep ? dry : rock);
+  }
+  ground(TX - 4, TZ - 4, 8, 4, tone(P.pave, [P.pave2, 0.3]));   // the orchestra
+  // the stage building across the front of it, with three doors
+  const scaena = block(TX - 15, TZ, TX + 14, TZ + 2, 0, 11, tone('#D6C7A8', ['#C9B894', 0.3]), '');
+  for (const dx of [-8, -1, 6]) recess(scaena, 'N', TX + dx, 0, 3, 5, flat(P.black), 1);
+  for (let x = TX - 15; x <= TX + 14; x += 2) put(x, 12, TZ + 1, '#C9B894');
+  // pines on the gentle slopes
+  for (let x = 4; x < 94; x += 7) for (let z = 3; z < 40; z += 6) {
+    const px = x + Math.floor(hash(x, 7, z) * 4), pz = z + Math.floor(hash(x, 8, z) * 4), h = hh[at(px, pz)];
+    if (!h || Math.abs(pz - crest(px)) < 5 || Math.hypot(px + 0.5 - TX, pz + 0.5 - TZ) < 16 || (px > 43 && px < 69 && pz < 24) || hash(px, 9, pz) < 0.35) continue;
+    fill(px, h, pz, 1, 2, 1, P.trunk);
+    for (let k = 0; k < 4; k++) { const r = 2.2 - k * 0.5; for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) if (Math.hypot(dx, dz) <= r) put(px + dx, h + 2 + k, pz + dz, (dx + dz + k) % 3 ? P.pine : P.pine2); }
+  }
+
+  // ---- the castle: walls along the ridge, towers, an enclosure with its keep, the Valencian flag ----
+  const wall = tone(P.tapial, [P.tapial2, 0.35], [shade(P.tapial, 1.05), 0.1]);
+  const g = (x, z) => hh[at(x, z)];
+  for (let x = 10; x <= 92; x++) {
+    const c = crest(x), base = Math.min(g(x, c), g(x, c + 1));
+    for (const z of [c, c + 1]) fill(x, base, z, 1, g(x, z) - base + 4, 1, wall, 'castell');
+    if (x % 2 === 0) put(x, base + 4 + Math.max(0, g(x, c + 1) - base), c + 1, wall, 'castell');
+  }
+  for (const x of [12, 26, 40, 72, 86]) {
+    const c = crest(x), base = Math.min(...[0, 1, 2, 3].flatMap(dx => [c - 1, c + 2].map(z => g(x + dx, z))));
+    fill(x, base, c - 1, 4, 9 + g(x, c) - base, 4, wall, 'castell');
+    for (let dx = 0; dx < 4; dx++) for (let dz = -1; dz < 3; dz++) if ((dx === 0 || dx === 3 || dz === -1 || dz === 2) && (dx + dz) % 2 === 0) put(x + dx, 9 + g(x, c), c + dz, wall, 'castell');
+    recess({ x0: x, x1: x + 3, z0: c - 1, z1: c + 2, tag: 'castell' }, 'S', x + 1, g(x, c) + 5, 2, 2, flat(P.black), 1);
+  }
+  // an enclosure on the south side, paved, with the keep
+  const c0 = crest(56);
+  for (let x = 46; x <= 66; x++) for (let z = c0 + 2; z <= c0 + 9; z++) {
+    const edge = x === 46 || x === 66 || z === c0 + 9;
+    const top = g(x, z);
+    if (edge) { fill(x, 0, z, 1, top + 3, 1, wall, 'castell'); if ((x + z) % 2 === 0) put(x, top + 3, z, wall, 'castell'); }
+    else fill(x, 0, z, 1, top + 1, 1, (xx, yy, zz) => (yy === top ? P.pave2 : wall), 'castell');
+  }
+  const kb = g(56, c0 + 5);
+  const keep = block(53, c0 + 3, 59, c0 + 8, kb, kb + 12, wall, 'castell');
+  windowIn(keep, 'S', 55, kb + 7, 2, 2, { glass: P.black, glow: false, sill: null });
+  for (let x = 53; x <= 59; x++) for (let z = c0 + 3; z <= c0 + 8; z++) if ((x === 53 || x === 59 || z === c0 + 3 || z === c0 + 8) && (x + z) % 2 === 0) put(x, kb + 13, z, wall, 'castell');
+  fill(56, kb + 13, c0 + 5, 1, 6, 1, P.dark, 'castell');
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) put(57 + i, kb + 16 + j, c0 + 5, j === 1 ? P.red : P.ochre, 'castell');   // la senyera
+
+  // ---- the old town at the foot of the hill: white and ochre houses, tiled roofs, a church, a square ----
+  const pave = tone(P.pave, [P.pave2, 0.3]);
+  ground(0, 88, 70, 4, pave);                                          // the pavement along the road
+  ground(0, 64, 70, 3, pave); ground(17, 46, 3, 42, pave); ground(47, 46, 3, 42, pave);   // streets
+  const walls = [P.white, P.cream, '#EBCB93', '#E9C9BA', '#F1E7D2'];
+  const house = (x0, z0, w, d, h, k) => {
+    const c = walls[k % walls.length];
+    const hs = block(x0, z0, x0 + w - 1, z0 + d - 1, 0, h - 1, tone(c, [shade(c, 0.95), 0.2]), '');
+    const shutters = k % 3 ? '#5E8C5A' : '#8A5A3C';
+    for (let y = 2; y < h - 2; y += 4) for (const f of ['N', 'S', 'E', 'W']) {
+      const [lo, hi] = span(hs, f);
+      for (let a = lo + 1; a < hi - 1; a += 3) { recess(hs, f, a, y, 1, 2, flat('#3C4550')); paint(hs, f, a + 1, y, 1, 2, flat(shutters)); }
+    }
+    recess(hs, 'S', x0 + Math.floor(w / 2), 0, 1, 3, flat(P.wood2));
+    if (k % 3 === 2) { fill(x0, h, z0, w, 1, d, P.white2, ''); for (let x = x0; x < x0 + w; x++) for (let z = z0; z < z0 + d; z++) if (x === x0 || z === z0 || x === x0 + w - 1 || z === z0 + d - 1) put(x, h + 1, z, c); }
+    else pitched(hs, h, w >= d ? 'x' : 'z', (x, y) => (y % 2 ? P.tile : P.tile2), c);
+  };
+  let k = 0;
+  for (const [x0, x1] of [[1, 16], [20, 46], [50, 69]]) for (const [z0, z1] of [[46, 63], [67, 87]]) {
+    for (let x = x0; x <= x1 - 5; ) {
+      const w = 5 + Math.floor(hash(x, 1, z0) * 4);
+      if (x + w - 1 > x1) break;
+      for (let z = z0; z <= z1 - 5; ) {
+        const d = 6 + Math.floor(hash(x, 2, z) * 3);
+        if (z + d - 1 > z1) break;
+        const church = x0 === 20 && z0 === 46 && x < 43, square = x0 === 50 && z0 === 67;
+        if (!church && !square) house(x, z, w, d, 6 + 2 * Math.floor(hash(x, 3, z) * 3), k++);
+        z += d + (hash(x, 4, z) < 0.3 ? 1 : 0);
+      }
+      x += w;
+    }
+  }
+  // the church of Santa Maria, with its bell tower
+  const stoneC = tone('#CDB894', ['#BFA981', 0.3]);
+  const church = block(21, 47, 37, 62, 0, 13, stoneC, '');
+  pitched(church, 14, 'z', (x, y) => (y % 2 ? P.tile : P.tile2), stoneC, { run: 2 });
+  windows(church, ['E', 'W'], 5, 1, 5, 4, { glass: '#7A8FB0', sill: null });
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) if ((i - 2) ** 2 + (j - 2) ** 2 <= 5) put(27 + i, 7 + j, 62, (i + j) % 2 ? '#C9A2D6' : '#7A8FB0', '', true);   // the rose window
+  recess(church, 'S', 28, 0, 3, 5, flat(P.wood2));
+  const bell = block(38, 47, 42, 51, 0, 29, stoneC, '');
+  recess(bell, 'S', 39, 24, 3, 3, flat(P.black)); recess(bell, 'E', 48, 24, 3, 3, flat(P.black));
+  for (let k2 = 0; k2 < 3; k2++) fill(38 + k2, 30 + k2, 47 + k2, 5 - 2 * k2, 1, 5 - 2 * k2, P.tile, '');
+  // the square: two palms and a fountain
+  ground(50, 67, 20, 21, tone(P.pave3, [P.pave2, 0.3]));
+  const palm = (x, z, h) => {
+    fill(x, 0, z, 1, h, 1, (xx, y) => (y % 2 ? '#8A6A48' : '#7A5C3C'));
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      put(x + dx, h, z + dz, P.leaf); put(x + 2 * dx, h - 1, z + 2 * dz, P.leaf2);
+      if (!dx || !dz) put(x + 3 * dx, h - 2, z + 3 * dz, P.leaf2);
+    }
+    put(x, h, z, P.leaf);
+  };
+  palm(53, 71, 10); palm(66, 83, 9);
+  for (let x = 57; x <= 62; x++) for (let z = 74; z <= 79; z++) {
+    const r = Math.hypot(x + 0.5 - 60, z + 0.5 - 77);
+    if (r <= 3) put(x, 0, z, r > 2.2 ? P.stone : P.water, '', r <= 2.2);
+  }
+  put(59, 1, 76, P.stone); put(59, 2, 76, P.water3);
+
+  // ---- the orange groves, and the farm with its cattle ----
+  const earthRows = (x, y, z) => (z % 2 ? '#9B7349' : '#8B653F');
+  ground(70, 46, 32, 42, earthRows);
+  for (let x = 71; x < 100; x += 4) for (let z = 46; z < 86; z += 4) {
+    if (x > 70 && x < 100 && z > 46 && z < 62) continue;               // the farm
+    if (z > 62 && z < 67) continue;                                       // the ditch
+    put(x, 0, z, P.trunk); put(x, 1, z, P.trunk);
+    clump(x + 0.5, 2.8, z + 0.5, 1.8, 1.4, 1.8, (xx, yy, zz) => (hash(xx, yy, zz) < 0.16 ? P.orange : hash(xx, yy + 1, zz) < 0.4 ? P.pine : '#4C8A40'));
+  }
+  for (let x = 70; x < 102; x++) { del(x, -1, 64); put(x, -2, 64, P.water2); put(x, -1, 63, P.stone2); put(x, -1, 65, P.stone2); }   // an irrigation ditch
+  const farm = block(86, 48, 97, 57, 0, 7, tone(P.white, [P.white2, 0.15]), 'masia');
+  pitched(farm, 8, 'x', (x, y) => (y % 2 ? P.tile : P.tile2), P.white);
+  windows(farm, ['S', 'N', 'E', 'W'], 3, 1, 2, 3, { glass: '#3C4550', sill: null });
+  recess(farm, 'S', 91, 0, 2, 4, flat(P.wood2));
+  fill(89, 4, 58, 7, 1, 2, P.tile, 'masia');                             // the porch roof
+  for (const x of [89, 95]) fill(x, 0, 59, 1, 4, 1, P.wood, 'masia');
+  // the corral, with cattle
+  for (let x = 72; x <= 84; x++) for (let z = 48; z <= 60; z++) {
+    if (x > 72 && x < 84 && z > 48 && z < 60) { put(x, -1, z, '#8E7A52'); continue; }
+    put(x, 1, z, P.wood, 'masia'); if ((x + z) % 3 === 0) put(x, 0, z, P.wood, 'masia');
+  }
+  const cow = (x, z, dir) => {
+    const hide = (xx, yy, zz) => (hash(xx, yy, zz) < 0.35 ? P.black : '#F3F1EC');
+    fill(x, 1, z, 4, 2, 2, hide, 'masia');
+    for (const [dx, dz] of [[0, 0], [3, 0], [0, 1], [3, 1]]) put(x + dx, 0, z + dz, '#3A3A3A', 'masia');
+    const hx = dir > 0 ? x + 4 : x - 1;
+    fill(hx, 2, z, 1, 2, 2, hide, 'masia'); put(hx + (dir > 0 ? 1 : -1), 2, z, '#E8A8A0', 'masia'); put(hx + (dir > 0 ? 1 : -1), 2, z + 1, '#E8A8A0', 'masia');
+  };
+  cow(74, 50, 1); cow(78, 55, -1); cow(75, 57, 1);
+
+  // ---- el Port: the blast furnace, Alto Horno number 2, rusty in its steel frame ----
+  const AX = 116, AZ = 14;
+  const rust = tone(P.rust, [P.rust2, 0.3], ['#B06E45', 0.2]);
+  const disc = (cx, cz, y, R, c, tag) => { for (let x = Math.floor(cx - R - 1); x <= cx + R + 1; x++) for (let z = Math.floor(cz - R - 1); z <= cz + R + 1; z++) if (Math.hypot(x + 0.5 - cx, z + 0.5 - cz) <= R) put(x, y, z, c, tag); };
+  const ring = (cx, cz, y, r0, r1, c, tag, every = 1) => { for (let x = Math.floor(cx - r1 - 1); x <= cx + r1 + 1; x++) for (let z = Math.floor(cz - r1 - 1); z <= cz + r1 + 1; z++) { const r = Math.hypot(x + 0.5 - cx, z + 0.5 - cz); if (r > r0 && r <= r1 && (x + z) % every === 0) put(x, y, z, c, tag); } };
+  for (let y = 0; y <= 33; y++) {
+    const R = y < 5 ? 3.6 : y < 9 ? 3.6 + (y - 5) * 0.25 : y < 28 ? 4.6 - (y - 9) * 0.05 : 3.6 - (y - 28) * 0.35;
+    disc(AX, AZ, y, R, y % 8 === 4 ? P.steel : rust, 'alt-forn');
+  }
+  // its frame: four columns, and three platforms with railings round it
+  for (const [dx, dz] of [[-7, -7], [5, -7], [-7, 5], [5, 5]]) fill(AX + dx, 0, AZ + dz, 2, 38, 2, P.iron, 'alt-forn');
+  for (const y of [12, 24, 36]) {
+    for (let x = AX - 7; x <= AX + 6; x++) for (let z = AZ - 7; z <= AZ + 6; z++) {
+      const edge = x === AX - 7 || x === AX + 6 || z === AZ - 7 || z === AZ + 6;
+      if (edge || Math.hypot(x + 0.5 - AX, z + 0.5 - AZ) > 4.8) put(x, y, z, P.iron, 'alt-forn');
+      if (edge && (x + z) % 2 === 0) put(x, y + 1, z, P.steel, 'alt-forn');
+    }
+  }
+  for (const [dx, dz] of [[-2, -2], [1, -2], [-2, 1], [1, 1]]) fill(AX + dx, 34, AZ + dz, 1, 9, 1, P.rust2, 'alt-forn');   // the uptakes
+  fill(AX - 2, 43, AZ - 2, 4, 1, 4, P.rust2, 'alt-forn');
+  for (let i = 0; i < 11; i++) fill(AX - 3 - i, 42 - Math.floor(i * 2.3), AZ + 1 + Math.floor(i * 0.5), 2, 2, 1, P.rust2, 'alt-forn');   // the downcomer
+  for (let y = 0; y <= 16; y++) disc(102, 20, y, y < 4 ? 1.2 : y < 7 ? 1.2 + (y - 4) * 0.5 : 2.8, y < 4 ? P.iron : rust, 'alt-forn');   // the dust catcher
+  // three hot blast stoves in a row, pale steel with domed tops
+  for (const cz of [2, 8, 14]) for (let y = 0; y <= 28; y++) disc(104, cz + 0.5, y, y < 25 ? 2.4 : 2.4 - (y - 24) * 0.55, y % 6 === 5 ? P.steel2 : tone('#B9BEC3', ['#A9AEB4', 0.3]), 'alt-forn');
+  // the skip incline, a lattice from the quay up to the top
+  for (let i = 0; i <= 30; i++) {
+    const x = 126 - Math.round(i * 0.25), y = Math.round(i * 1.15), z = 22 - Math.round(i * 0.2);
+    for (const dz of [0, 1]) if (i % 2 === 0 || dz === 0) put(x, y, z + dz, i % 3 ? P.rust2 : P.iron, 'alt-forn');
+    if (i % 6 === 0) fill(x, 0, z, 1, y, 1, P.iron, 'alt-forn');
+  }
+  const cast = block(107, 23, 121, 29, 0, 6, tone(P.brick, [P.brick2, 0.3]), 'alt-forn');
+  pitched(cast, 7, 'x', (x, y) => (y % 2 ? P.iron : P.rust2), P.brick);
+
+  // ---- the hospital, and the plant that cleans its water ----
+  ground(102, 36, 20, 34, tone(P.pave, [P.pave2, 0.3]));
+  const hosp = block(104, 40, 121, 52, 0, 13, tone('#EEF0EF', ['#E3E7E6', 0.12]), 'hospital');
+  for (const f of ['N', 'S', 'E', 'W']) { const [lo, hi] = span(hosp, f); for (const y of [2, 6, 10]) paint(hosp, f, lo + 1, y, hi - lo - 1, 2, (i) => (i % 3 === 2 ? [P.white, false] : ['#8FB8D4', true])); }
+  recess(hosp, 'S', 110, 0, 5, 4, (i) => (i % 2 ? [P.glass, true] : [P.frame, false]));
+  fill(108, 4, 53, 9, 1, 3, P.white2, 'hospital');
+  fill(110, 14, 44, 5, 1, 5, P.white, 'hospital');
+  for (let i = 0; i < 5; i++) { put(110 + i, 15, 46, P.red, 'hospital'); put(112, 15, 44 + i, P.red, 'hospital'); }   // a red cross on the roof
+  // an ambulance at the door
+  fill(118, 0, 56, 4, 3, 2, P.white, 'hospital'); fill(118, 1, 56, 4, 1, 2, P.red, 'hospital'); put(121, 2, 56, '#3C4550', 'hospital'); put(121, 2, 57, '#3C4550', 'hospital'); put(119, 3, 56, '#58A6FF', 'hospital', true);
+  // two round tanks, a pipe from the hospital
+  for (const cx of [108, 117]) for (let x = cx - 4; x <= cx + 4; x++) for (let z = 60; z <= 68; z++) {
+    const r = Math.hypot(x + 0.5 - cx, z + 0.5 - 64.5);
+    if (r > 4) continue;
+    if (r > 3.2) fill(x, 0, z, 1, 2, 1, tone(P.stone, [P.stone2, 0.3]), 'hospital');
+    else put(x, 0, z, (x + z) % 3 ? '#5E8F86' : '#6FA096', 'hospital');
+  }
+  for (const cx of [108, 117]) fill(cx - 3, 2, 64, 7, 1, 1, P.steel, 'hospital');
+  for (let z = 53; z < 60; z++) put(112, 0, z, P.steel2, 'hospital');
+
+  // ---- the harbour: a quay with a crane and containers, a ship ----
+  ground(124, 0, 12, 34, tone('#BDBAB2', ['#B0ADA5', 0.3]));
+  for (let z = 1; z < 33; z += 4) put(135, 0, z, P.dark);
+  const boxes = [P.red, P.blue, P.green, P.ochre, '#E2E0DA', '#3F8B8E'];
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { const h = 1 + Math.floor(hash(i, 3, j) * 3); for (let y = 0; y < h; y++) fill(125 + j * 3, y * 2, 20 + i * 4, 2, 2, 3, boxes[Math.floor(hash(i, y, j) * boxes.length)]); }
+  for (const x of [128, 134]) for (const z of [8, 16]) fill(x, 0, z, 1, 14, 1, P.blue);   // the container crane
+  fill(128, 14, 8, 7, 1, 9, P.blue); fill(128, 15, 11, 20, 1, 3, P.blue); fill(143, 12, 12, 1, 3, 1, P.dark);
+  // the sea: a basin by the quay, and open water past the beach
+  for (let x = 124; x < W; x++) for (let z = 0; z < D; z++) {
+    const port = z < 34 && x > 135, open = x > 135 + Math.round(Math.sin(z / 6) * 1.5);
+    if (!(port || open)) continue;
+    del(x, -1, z); del(x, -2, z);
+    const shore = !(port || x - 1 > 135 + Math.round(Math.sin(z / 6) * 1.5));
+    put(x, -2, z, shore ? P.foam : tone(P.sea, [P.sea2, 0.3], [P.sea3, 0.08]));
+    for (let y = -6; y <= -3; y++) put(x, y, z, y < -4 ? P.deep : P.sea2);
+  }
+  // a cargo ship at the quay
+  for (let x = 138; x <= 146; x++) for (let z = 3; z <= 29; z++) {
+    const bow = z < 7 ? 7 - z : 0;
+    if (x < 138 + Math.floor(bow / 2) || x > 146 - Math.ceil(bow / 2)) continue;
+    put(x, -1, z, '#7E2F2A'); put(x, 0, z, P.black); put(x, 1, z, P.black);
+    put(x, 2, z, P.steel2);
+  }
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) fill(139 + j * 4, 3, 7 + i * 4, 3, 2, 3, boxes[(i + j * 2) % boxes.length]);
+  const bridgeHouse = block(139, 24, 145, 28, 3, 9, P.white, '');
+  paint(bridgeHouse, 'N', 139, 8, 7, 1, flat('#3C4550', true));
+  fill(141, 10, 26, 2, 2, 2, P.red); fill(141, 12, 26, 2, 1, 2, P.black);
+
+  // ---- the beach, with umbrellas, a lifeguard's chair and the promenade's palms ----
+  for (let x = 122; x < W; x++) for (let z = 34; z < 92; z++) if (colorAt(x, -1, z)) put(x, -1, z, tone(P.sand, [P.sand2, 0.35]), 'platja');
+  ground(120, 34, 2, 58, tone(P.pave, [P.pave2, 0.3]));
+  const stripes = [[P.red, P.white], [P.blue, P.white], [P.ochre, P.white], [P.green, P.white]];
+  [[125, 40], [129, 47], [124, 55], [130, 62], [126, 70], [129, 79]].forEach(([x, z], i) => {
+    fill(x, 0, z, 1, 3, 1, P.white, 'platja');
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) put(x + dx, 3, z + dz, stripes[i % 4][(dx + 1) % 2], 'platja');
+    fill(x + 1, 0, z + 2, 2, 1, 1, boxes[i % boxes.length], 'platja');
+  });
+  fill(132, 0, 50, 1, 4, 1, P.wood, 'platja'); fill(134, 0, 50, 1, 4, 1, P.wood, 'platja'); fill(132, 4, 50, 3, 1, 2, P.wood, 'platja'); fill(132, 5, 51, 3, 2, 1, P.white, 'platja'); put(133, 6, 51, P.red, 'platja');
+  for (const z of [38, 50, 62, 74, 86]) palm(121, z, 9);
+
+  // ---- the road: the Sagunt stop by the town, the roundabout at the port where the bus turns ----
+  road(0, 108); roundabout(114, 92); shelter(46, 90);
+  for (const x of [8, 30, 64, 88, 104]) { fill(x, 0, 91, 1, 8, 1, P.dark); put(x, 8, 91, P.light, '', true); put(x, 9, 91, P.dark); }
+  for (let x = 52; x <= 55; x++) for (let z = 92; z <= 95; z++) if (x % 2 === 0) put(x, -1, z, P.white);   // a zebra crossing
+
+  // ---- people ----
+  const person = (x, z, shirt, hair = P.hair, y = 0) => { put(x, y, z, P.dark); put(x, y + 1, z, shirt); put(x, y + 2, z, P.skin); if (hair) put(x, y + 3, z, hair); };
+  [[56, 72, P.red], [62, 81, P.blue, '#D9A441'], [45, 90, P.green], [80, 58, P.plum, '#8A4B2E'], [99, 60, P.ochre], [110, 57, P.white],
+    [127, 44, P.red, null], [131, 58, P.blue], [126, 76, P.ochre, '#D9A441'], [18, 70, P.stone], [36, 88, lineages[3 % lineages.length]]].forEach(([x, z, c, h]) => person(x, z, c, h === undefined ? P.hair : h));
+
+  return b.finish({ pins: { castell: [56, 24, 20], 'alt-forn': [114, 24, 22] } });
 }
 
 // ---- turning blocks into meshes ----
-function meshesOf(city) {
-  const solid = [], glow = [];
-  for (const v of city.list) (v.glow ? glow : solid).push(v);
+// in strips across the board, so that what is out of view, or out of the sun's, is not drawn
+function meshesOf(city, solidMat, glowMat, strips = 4) {
+  const width = Math.ceil(city.W * city.S / strips);
+  const solid = Array.from({ length: strips }, () => []), glow = Array.from({ length: strips }, () => []);
+  for (const v of city.list) (v.glow ? glow : solid)[Math.min(strips - 1, Math.floor(v.x / width))].push(v);
   const box = new THREE.BoxGeometry(1 / city.S, 1 / city.S, 1 / city.S);
   const make = (list, material) => {
     const mesh = new THREE.InstancedMesh(box, material, list.length);
@@ -603,15 +936,15 @@ function meshesOf(city) {
     mesh.userData.base = list.map(v => new THREE.Color(v.c));
     return mesh;
   };
-  const solidMesh = make(solid, new THREE.MeshLambertMaterial());
-  solidMesh.castShadow = true; solidMesh.receiveShadow = true;
-  const glowMesh = make(glow, new THREE.MeshLambertMaterial({ emissive: 0x000000 }));
-  glowMesh.receiveShadow = true;
-  return { solidMesh, glowMesh };
+  const meshes = [];
+  for (const list of solid) if (list.length) { const m = make(list, solidMat); m.castShadow = true; m.receiveShadow = true; meshes.push(m); }
+  for (const list of glow) if (list.length) { const m = make(list, glowMat); m.receiveShadow = true; meshes.push(m); }
+  for (const m of meshes) m.computeBoundingSphere();
+  return meshes;
 }
 
-// where each building's label goes: over the middle of its top
-function anchorsOf(city) {
+// where each building's label goes: over the middle of its top (dx moves a board along)
+function anchorsOf(city, dx = 0) {
   const box = {};
   for (const v of city.list) {
     if (!v.tag) continue;
@@ -621,7 +954,7 @@ function anchorsOf(city) {
   const out = {}, S = city.S;
   for (const [tag, b] of Object.entries(box)) {
     const [x, y, z] = city.pins[tag] || [(b.x0 + b.x1 + 1) / 2, b.y1 + 1, (b.z0 + b.z1 + 1) / 2];
-    out[tag] = new THREE.Vector3(x / S - city.W / 2, y / S + 1.2, z / S - city.D / 2);
+    out[tag] = new THREE.Vector3(x / S - city.W / 2 + dx, y / S + 1.2, z / S - city.D / 2);
   }
   return out;
 }
@@ -675,12 +1008,51 @@ function carOf(color, front, back, body, lit) {
   return g;
 }
 
+// the yellow bus, 3 long on four wheels, its windows lit at night
+function busOf(body, lit) {
+  const solid = [
+    [2.96, 0.95, 1.18, 0, 0.98, 0, P.bus], [2.98, 0.14, 1.2, 0, 0.57, 0, '#D9A21F'], [2.86, 0.12, 1.1, 0, 1.51, 0, '#F7F4EC'],
+    [0.9, 0.1, 0.7, -0.6, 1.62, 0, '#E4E1D8'], [0.1, 0.24, 1.0, 1.5, 0.62, 0, P.dark], [0.1, 0.24, 1.0, -1.5, 0.62, 0, P.dark],
+    ...[[0.92, 0.56], [0.92, -0.56], [-0.92, 0.56], [-0.92, -0.56]].map(([x, z]) => [0.44, 0.44, 0.16, x, 0.3, z, P.black]),
+  ];
+  const glass = [
+    [2.3, 0.36, 1.2, -0.22, 1.16, 0, '#2E3844'], [0.06, 0.5, 1.0, 1.49, 1.12, 0, '#2E3844'], [0.06, 0.14, 0.76, 1.5, 1.42, 0, '#FF9A2E'],
+    [0.06, 0.12, 0.2, 1.5, 0.74, 0.4, '#FFF6C8'], [0.06, 0.12, 0.2, 1.5, 0.74, -0.4, '#FFF6C8'],
+    [0.06, 0.1, 0.16, -1.49, 0.8, 0.44, '#E0473A'], [0.06, 0.1, 0.16, -1.49, 0.8, -0.44, '#E0473A'],
+  ];
+  const g = new THREE.Group();
+  g.add(boxesOf(solid, body), boxesOf(glass, lit));
+  return g;
+}
+// the bridge over the gap between the two boards: a deck, two steel arches and their hangers, railings
+function bridgeOf(x0, x1, z0, z1, body) {
+  const list = [], mid = (x0 + x1) / 2, half = (x1 - x0) / 2, steel = '#6F8FAF';
+  list.push([x1 - x0, 0.5, z1 - z0, mid, -0.25, (z0 + z1) / 2, P.asphalt], [x1 - x0, 0.3, z1 - z0 - 0.4, mid, -0.65, (z0 + z1) / 2, P.stone2]);
+  for (const z of [z0 - 0.05, z1 + 0.05]) {
+    list.push([x1 - x0, 0.08, 0.08, mid, 0.55, z, P.white]);
+    for (let i = 0; i <= 24; i++) {
+      const x = x0 + 0.2 + i * (x1 - x0 - 0.4) / 24, y = 3.2 * (1 - ((x - mid) / half) ** 2);
+      list.push([0.5, 0.26, 0.22, x, y, z, steel]);
+      if (i % 4 === 0 && i && i < 24) list.push([0.08, y, 0.08, x, y / 2, z, steel]);
+      if (i % 2 === 0) list.push([0.06, 0.5, 0.06, x, 0.3, z, P.white]);
+    }
+  }
+  return boxesOf(list, body);
+}
+
 export function initCity(root, { lineages, ticket, onPick } = {}) {
-  const city = buildCity(lineages);
-  const { solidMesh, glowMesh } = meshesOf(city);
+  // two boards: the tool city, and past a bridge to the east, Sagunt and its port
+  const city = buildTools(lineages), port = buildSagunto(lineages);
+  const SAG = 84;                                                                  // where Sagunt's board begins, along x
   const O = (x, y, z) => new THREE.Vector3(x - city.W / 2, y, z - city.D / 2);   // city blocks to scene
   const scene = new THREE.Scene();
-  scene.add(solidMesh, glowMesh);
+  const solidMat = new THREE.MeshLambertMaterial(), glowMat = new THREE.MeshLambertMaterial({ emissive: 0x000000 });
+  const boards = [[city, 0, 'tools'], [port, SAG, 'sagunto']].map(([c, dx, name]) => {
+    const parts = meshesOf(c, solidMat, glowMat);
+    for (const m of parts) { m.position.x = dx; scene.add(m); }
+    return { name, dx, meshes: parts, anchors: anchorsOf(c, dx) };
+  });
+  const meshes = boards.flatMap(b => b.meshes);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.25);
   const sun = new THREE.DirectionalLight(0xffffff, 1.9);
   sun.position.set(-30, 60, 25);
@@ -689,7 +1061,6 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   Object.assign(sun.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, near: 1, far: 160 });
   scene.add(hemi, sun);
 
-  // trains, one per line, there and back
   // trains, one per line, there and back: each car rides its two bogies along the rails, so it
   // turns into a curve bit by bit; a train slows into each end, waits, and goes back the way it
   // came with a cab at either end. The short lines have shorter, slower trains.
@@ -744,13 +1115,33 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   scene.add(beam);
 
+  // ---- the yellow bus: it waits at a stop, and takes you over the bridge to the other city ----
+  const deck = bridgeOf(74, SAG, 46, 48, new THREE.MeshLambertMaterial(vc));
+  deck.position.copy(O(0, 0, 0)); scene.add(deck);
+  const bus = busOf(carBody, carLit);
+  scene.add(bus);
+  // the way to Sagunt ends past the roundabout at its port, the way back past the roundabout by the market
+  const roads = {
+    sagunto: pathOf([33, 47.5], [['to', 141, 47.5], ['turn', 141, 46, -1.5 * Math.PI], ['turn', 139, 46, Math.PI / 2], ['to', 136, 46.5]]),
+    tools: pathOf([136, 46.5], [['to', 29, 46.5], ['turn', 29, 46, Math.PI / 2], ['turn', 27, 46, -1.5 * Math.PI], ['to', 33, 47.5]]),
+  };
+  const CENTRE = { tools: 0, sagunto: SAG };
+  const trip = { road: roads.sagunto, u: 0, on: false, to: 'sagunto', speed: 0.75 };
+  function park(road, u) {
+    const [fx, fz] = pointOn(road, u + 0.95), [bx, bz] = pointOn(road, u - 0.95);
+    bus.position.copy(O((fx + bx) / 2, 0, (fz + bz) / 2));
+    bus.rotation.y = Math.atan2(-(fz - bz), fx - bx);
+  }
+  park(trip.road, 0);
+
   // ---- the view ----
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
   // how it is seen: turned round (yaw) and from how high (pitch), from nearly
   // the ground to straight above
   const PITCH = [0.1, 1.54];
   const tilted = (p) => Math.max(PITCH[0], Math.min(PITCH[1], p));
-  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null };
+  // cx is where it looks along x: the middle of the city in view, or the bus on its way
+  const view = { yaw: 0.34, pitch: Math.atan(0.72), goal: null, pitchGoal: null, cx: 0, cxGoal: null, city: 'tools' };
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
@@ -786,24 +1177,33 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function place() {
     fit();
     const r = 120;
-    camera.position.set(Math.sin(view.yaw) * Math.cos(view.pitch) * r, Math.sin(view.pitch) * r + 3, Math.cos(view.yaw) * Math.cos(view.pitch) * r + 1);
-    camera.lookAt(0, 3, 1);
+    camera.position.set(view.cx + Math.sin(view.yaw) * Math.cos(view.pitch) * r, Math.sin(view.pitch) * r + 3, Math.cos(view.yaw) * Math.cos(view.pitch) * r + 1);
+    camera.lookAt(view.cx, 3, 1);
     camera.updateMatrixWorld();
+    // the sun, and so its shadows, go where the view goes
+    sun.position.set(view.cx - 30, 60, 25); sun.target.position.set(view.cx, 0, 0); sun.target.updateMatrixWorld();
   }
 
   // ---- labels over the buildings, and their tickets ----
-  const anchors = anchorsOf(city);
   const tags = new Map();
   root.querySelectorAll('.city-label[data-tag]').forEach(b => {
-    const tag = b.dataset.tag;
-    if (!anchors[tag]) return;
+    const tag = b.dataset.tag, home = boards.find(d => d.anchors[tag]);
+    if (!home) return;
     b.addEventListener('click', (e) => { e.stopPropagation(); open(tag); });
     b.addEventListener('mouseenter', () => light(tag));
     b.addEventListener('mouseleave', () => light(''));
     b.addEventListener('focus', () => light(tag));
     b.addEventListener('blur', () => light(''));
-    tags.set(tag, { tag, el: b, pos: anchors[tag], line: b.dataset.line });
+    tags.set(tag, { tag, el: b, pos: home.anchors[tag], line: b.dataset.line, city: home.name });
   });
+  // only the names of the city in view show, none on the way
+  function showCity() {
+    for (const l of tags.values()) l.el.hidden = trip.on || l.city !== view.city;
+    for (const [name, svg] of Object.entries(maps)) svg.toggleAttribute('hidden', name !== view.city);
+    busButton.setAttribute('aria-label', view.city === 'tools' ? 'Take the yellow bus to Sagunt, where my papers are' : 'Take the yellow bus back to the tools');
+    busButton.title = busButton.getAttribute('aria-label');
+    dirty = true;
+  }
   const card = document.createElement('div');
   card.className = 'city-ticket';
   card.hidden = true;
@@ -816,6 +1216,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     card.innerHTML = `<button type="button" class="city-ticket-x" aria-label="Close">×</button>`
       + `<p class="city-ticket-name"><b>${esc(t.name)}</b>${t.kind ? ` <span>${esc(t.kind)}</span>` : ''}</p>`
       + (t.meta ? `<p class="city-ticket-meta">${esc(t.meta)}</p>` : '')
+      + (t.title ? `<p class="city-ticket-title">${esc(t.title)}</p>` : '')
       + `<p class="city-ticket-desc">${esc(t.desc)}</p>`
       + (t.links && t.links.length ? `<p class="city-ticket-links">${t.links.map(k => `<a href="${esc(k.href)}" target="_blank" rel="noopener">${esc(k.label)}</a>`).join('')}</p>` : '');
     card.className = `city-ticket city-ticket--${l.line || 'none'}`;
@@ -843,6 +1244,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   function placeLabels() {
     if (compact) return;
     for (const l of tags.values()) {
+      if (l.el.hidden) continue;
       v.copy(l.pos).project(camera);
       // over its building, but never out of the city's frame
       const hw = l.el.offsetWidth / 2 + 2, hh = l.el.offsetHeight + 2;
@@ -854,13 +1256,13 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
 
   // ---- pointing at a building lights it up ----
-  const byTag = { solid: {}, glow: {} };
-  [[solidMesh, byTag.solid], [glowMesh, byTag.glow]].forEach(([mesh, idx]) => mesh.userData.tags.forEach((t, i) => { if (t) (idx[t] || (idx[t] = [])).push(i); }));
+  const byTag = meshes.map(mesh => { const idx = {}; mesh.userData.tags.forEach((t, i) => { if (t) (idx[t] || (idx[t] = [])).push(i); }); return idx; });
   let lit = '';
   const bright = new THREE.Color();
   function light(tag) {
     if (tag === lit) return;
-    [[solidMesh, byTag.solid], [glowMesh, byTag.glow]].forEach(([mesh, idx]) => {
+    meshes.forEach((mesh, k) => {
+      const idx = byTag[k];
       (idx[lit] || []).forEach(i => mesh.setColorAt(i, mesh.userData.base[i]));
       (idx[tag] || []).forEach(i => mesh.setColorAt(i, bright.copy(mesh.userData.base[i]).lerp(new THREE.Color('#FFFFFF'), 0.28)));
       mesh.instanceColor.needsUpdate = true;
@@ -878,9 +1280,10 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects([solidMesh, glowMesh], false)[0];
+    const hit = ray.intersectObjects([...meshes, bus], true)[0];
+    if (hit && !hit.object.isInstancedMesh) return 'bus';
     const t = hit ? hit.object.userData.tags[hit.instanceId] : '';
-    return tags.has(t) ? t : '';
+    return tags.has(t) && tags.get(t).city === view.city ? t : '';
   }
   // dragging sideways turns the city, and with a mouse up and down tilts it (on a
   // touch screen that scrolls the page, so the arrows tilt it); a tap without a
@@ -896,7 +1299,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     if (drag.mouse) { view.pitch = tilted(drag.pitch + dy * 0.006); view.pitchGoal = null; }
     dirty = true;
   });
-  canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t) open(t); else close(); } });
+  canvas.addEventListener('pointerup', (e) => { const was = drag; drag = null; if (was && !was.moved) { const t = pick(e); if (t === 'bus') ride(); else if (t) open(t); else close(); } });
   canvas.addEventListener('pointercancel', () => { drag = null; });
   canvas.addEventListener('pointerleave', () => { if (!drag) light(''); });
   // the arrows turn it a quarter at a time
@@ -910,7 +1313,32 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   arrows.children[1].addEventListener('click', () => turn(1));
   arrows.children[2].addEventListener('click', () => tilt(1));
   arrows.children[3].addEventListener('click', () => tilt(-1));
+  // and the yellow bus, off to the other city
+  const busButton = document.createElement('button');
+  busButton.type = 'button';
+  busButton.className = 'city-bus';
+  busButton.innerHTML = '<svg viewBox="0 0 16 12" aria-hidden="true"><rect x="1" y="1.5" width="14" height="7.5" rx="1.6" fill="#F4C430" stroke="currentColor" stroke-width="1.2"/><rect x="2.6" y="3" width="7" height="2.4" fill="currentColor"/><rect x="11" y="3" width="2.4" height="3.4" fill="currentColor"/><circle cx="4.5" cy="9.6" r="1.5" fill="currentColor"/><circle cx="11.5" cy="9.6" r="1.5" fill="currentColor"/></svg>';
+  busButton.addEventListener('click', () => ride());
+  arrows.appendChild(busButton);
   stage.appendChild(arrows);
+  // a ride: the bus drives the road with the view behind it; with motion off, you are simply there
+  function ride() {
+    if (trip.on) return;
+    close(); light('');
+    trip.to = view.city === 'tools' ? 'sagunto' : 'tools';
+    trip.road = roads[trip.to]; trip.u = 0;
+    const still = typeof animSpeed === 'number' && animSpeed <= 0;
+    if (still) { arrive(); view.cx = CENTRE[view.city]; view.cxGoal = null; return; }
+    trip.on = true;
+    showCity();
+  }
+  function arrive() {
+    trip.on = false; view.city = trip.to;
+    trip.road = roads[view.city === 'tools' ? 'sagunto' : 'tools']; trip.u = 0;
+    park(trip.road, 0);
+    view.cxGoal = CENTRE[view.city];
+    showCity();
+  }
 
   // ---- the map of the lines, in a corner: the same city without buildings ----
   const map = document.createElement('div');
@@ -919,7 +1347,7 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   const stop = (tag, x, y, name, below, dashed) => `<g class="city-map-stop" data-tag="${tag}"><title>${esc(name)}</title>`
     + `<circle cx="${x}" cy="${y}" r="5"${dashed ? ' stroke-dasharray="2 2"' : ''}/>`
     + `<text x="${x}" y="${below ? y + 14 : y - 8}" text-anchor="middle">${esc(name)}</text></g>`;
-  map.innerHTML = `<svg viewBox="0 0 292 128" role="presentation">
+  map.innerHTML = `<svg class="city-map-tools" viewBox="0 0 292 140" role="presentation">
     <g fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M13 60 H45" stroke="${P.red}"/><path d="M13 65.3 H45" stroke="${P.blue}"/><path d="M13 70.7 H45" stroke="${P.green}"/><path d="M13 76 H45" stroke="${P.ochre}"/>
       <path class="city-map-line" data-line="red" d="M59 58 L87 30 H182" stroke="${P.red}"/>
@@ -937,7 +1365,18 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     ${stop('snpick', 104, 70, 'snpick', true)}${stop('distree', 200, 70, 'distree')}${stop('fstic', 118, 91, 'fstic', true)}
     ${stop('mycolorsTB', 212, 110, 'mycolorsTB', true)}${stop('karyon', 272, 110, 'karyon', true, true)}
     <g class="city-map-trains"></g>
+    <g class="city-map-bus"><title>the yellow bus to Sagunt</title><path d="M118 110 V132 H250" stroke="${P.bus}"/><rect x="250" y="125" width="38" height="14" rx="7"/><text x="269" y="135" text-anchor="middle">Sagunt</text></g>
+  </svg>
+  <svg class="city-map-sagunto" viewBox="0 0 292 140" role="presentation">
+    <path class="city-map-sea" d="M244 0 C236 36 248 84 238 140 H292 V0 Z"/>
+    <path class="city-map-hill" d="M4 46 C24 16 94 4 176 20 C190 22 192 34 178 36 C120 30 60 38 6 58 Z"/>
+    <g class="city-map-bus"><title>the yellow bus back to the tools</title><path d="M42 132 H226" stroke="${P.bus}"/><circle cx="230" cy="128" r="5" fill="none" stroke="${P.bus}" stroke-width="3"/><rect x="4" y="125" width="38" height="14" rx="7"/><text x="23" y="135" text-anchor="middle">tools</text></g>
+    ${stop('castell', 84, 24, 'castell', true)}${stop('masia', 148, 84, 'masia', true)}${stop('alt-forn', 206, 28, 'alt forn', true)}
+    ${stop('hospital', 206, 72, 'hospital', true)}${stop('platja', 232, 106, 'platja')}
+    <text class="city-map-town" x="46" y="100">Sagunt</text><text class="city-map-town" x="172" y="120">el Port</text>
   </svg>`;
+  const maps = { tools: map.querySelector('.city-map-tools'), sagunto: map.querySelector('.city-map-sagunto') };
+  map.querySelectorAll('.city-map-bus').forEach(g => g.addEventListener('click', (e) => { e.stopPropagation(); ride(); }));
   stage.appendChild(map);
   map.querySelectorAll('.city-map-stop').forEach(g => {
     const tag = g.dataset.tag;
@@ -971,8 +1410,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     hemi.intensity = night ? 0.45 : 1.25;
     sun.intensity = night ? 0.35 : 1.9;
     sun.color.set(night ? '#8FA0FF' : '#ffffff');
-    glowMesh.material.emissive.set(night ? '#FFC96B' : '#000000');
-    glowMesh.material.emissiveIntensity = night ? 0.9 : 0;
+    glowMat.emissive.set(night ? '#FFC96B' : '#000000');
+    glowMat.emissiveIntensity = night ? 0.9 : 0;
     carLit.emissive.set(night ? '#FFE9A8' : '#000000');
     reads.forEach(r => { r.m.material.emissiveIntensity = night ? 0.8 : 0; });
     beam.visible = night;
@@ -1017,7 +1456,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
   }
   function frame(ts) {
     requestAnimationFrame(frame);
-    const dt = last ? Math.min((ts - last) / 16.667, 3) : 1;
+    // frames of a sixtieth of a second: the city's clock stops short after a stall, a bus ride keeps to time
+    const raw = last ? (ts - last) / 16.667 : 1, dt = Math.min(raw, 3), ds = Math.min(raw, 12);
     last = ts;
     if (!visible || document.hidden) return;
     // the page's animation speed (art.js), none when motion is off
@@ -1034,6 +1474,22 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
       if (Math.abs(d) < 0.002) view.pitchGoal = null;
       dirty = true;
     }
+    if (trip.on) {
+      const L = trip.road.L, ease = Math.max(0.15, Math.min(1, trip.u / 5 + 0.15, (L - trip.u) / 5 + 0.1));
+      trip.u = Math.min(L, trip.u + trip.speed * ease * ds);
+      park(trip.road, trip.u);
+      // the view goes one way only, behind the bus, and no further than the city it is going to
+      const x = Math.max(CENTRE.tools, Math.min(CENTRE.sagunto, bus.position.x)), was = view.cxGoal ?? view.cx;
+      view.cxGoal = trip.to === 'sagunto' ? Math.max(was, x) : Math.min(was, x);
+      if (trip.u >= L) arrive();
+      dirty = true;
+    }
+    if (view.cxGoal !== null) {
+      const d = view.cxGoal - view.cx;
+      view.cx += Math.abs(d) < 0.02 ? d : d * Math.min(1, 0.09 * ds);
+      if (Math.abs(d) < 0.02 && !trip.on) view.cxGoal = null;
+      dirty = true;
+    }
     if (speed > 0) { move(dt, speed * 2); dirty = true; }
     if (!dirty) return;
     dirty = false;
@@ -1043,8 +1499,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     placeMapTrains();
   }
   window.addEventListener('resize', resize);
-  resize(); theme(); place(); move(0, 0);
+  resize(); theme(); showCity(); place(); move(0, 0);
   requestAnimationFrame(frame);
-  // for the page's own tests: the clock the moving things keep
-  return { tags, view, open, close, light, redraw: () => { dirty = true; }, get clock() { return t; } };
+  // for the page's own tests: the clock the moving things keep, the ride, the city in view
+  return { tags, view, open, close, light, ride, bus: trip, redraw: () => { dirty = true; }, get clock() { return t; }, get riding() { return trip.on; } };
 }

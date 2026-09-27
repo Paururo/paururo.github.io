@@ -228,6 +228,16 @@ const CITY_STOPS = [
   { tag: 'karyon', name: 'karyon', line: 'works', sub: 'under works' },
   { tag: 'depot', name: 'the depot', line: 'depot', sub: 'older and smaller' },
 ];
+// Sagunt and its port, past the bridge in the same city: a building for each
+// paper I led. The tag is the building; doi, its paper in SELECTED_WORK; line,
+// the colour of its label (TB or SARS-CoV-2); sub, what it found.
+const SAGUNTO_STOPS = [
+  { tag: 'castell', doi: '10.64898/2026.03.24.714002', name: 'Pathotypr, 2026', line: 'tb', sub: 'the castle keeps watch' },
+  { tag: 'masia', doi: '10.1099/mgen.0.001826', name: 'Host compatibility, 2026', line: 'tb', sub: 'people and cattle' },
+  { tag: 'hospital', doi: '10.64898/2026.03.31.26346553', name: 'Wastewater, 2026', line: 'cov', sub: 'KP.3, three months early' },
+  { tag: 'alt-forn', doi: '10.1371/journal.ppat.1010631', name: 'PLOS Pathogens, 2022', line: 'cov', sub: 'A222V opens the spike' },
+  { tag: 'platja', doi: '10.1128/mBio.02315-21', name: 'mBio, 2021', line: 'cov', sub: 'mutations that kept coming back' },
+];
 
 const MYCOLORS_TB = {
   L1: '#ff3091', L2: '#001aff', L3: '#8a0bd2', L4: '#ff0000', L5: '#995200', L6: '#1eb040', L7: '#fbff00',
