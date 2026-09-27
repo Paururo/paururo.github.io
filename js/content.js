@@ -118,7 +118,7 @@ const BLOG_POSTS = [
     date: '2026-09-23',
     category: 'Paper',
     title: 'Host-strain compatibility in tuberculosis, now in Microbial Genomics',
-    body: 'Different <em>M. tuberculosis</em> complex lineages favour different hosts, but the molecular basis of that preference is hard to study in vivo. With Marta Caballer-Gual, co-first author, we infected human and bovine macrophages with human- and animal-adapted strains. In each model the best-matched strain reached the higher bacterial load, and the host transcriptome leaned towards replication, repair and the cell cycle; mismatched pairings showed lower loads and stronger endosomal, antigen-presentation and immune signalling. We also followed phospholipase C: blocking it lowered bacterial burden and cell death in human macrophages but not in bovine ones.',
+    body: 'Different <em>M. tuberculosis</em> complex lineages favour different hosts, but the molecular basis of that preference is hard to study in vivo. With Marta Caballer-Gual, co-first author, we infected human and bovine macrophages with human- and animal-associated strains. In each model the best-matched strain reached the higher bacterial load, and the host transcriptome leaned towards replication, repair and the cell cycle; mismatched pairings showed lower loads and stronger endosomal, antigen-presentation and immune signalling. We also followed phospholipase C: blocking it lowered bacterial burden and cell death in human macrophages but not in bovine ones.',
     links: [
       { url: 'https://doi.org/10.1099/mgen.0.001826', label: 'Read the paper', icon: 'fas fa-file-alt' },
     ],
@@ -256,7 +256,7 @@ const MYCOLORS_TB = {
 const LINEAGE_NAMES = {
   L1: 'L1, Indo-Oceanic', L2: 'L2, East Asian', L3: 'L3, East African-Indian', L4: 'L4, Euro-American',
   L5: 'L5, West African 1', L6: 'L6, West African 2', L7: 'L7, Ethiopian', L8: 'L8, the earliest branch', L9: 'L9, the lineage our 2021 paper described',
-  L10: 'L10', A1: 'A1, animal-adapted', A2: 'A2, animal-adapted', A3: 'A3, animal-adapted', A4: 'A4, animal-adapted',
+  L10: 'L10', A1: 'A1, animal-associated', A2: 'A2, animal-associated', A3: 'A3, animal-associated', A4: 'A4, animal-associated',
 };
 
 // ---------- The tuberculosis complex, drawn as a half-circle phylogeny ----------

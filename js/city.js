@@ -1848,6 +1848,8 @@ export function initCity(root, { lineages, ticket, onPick } = {}) {
     say(busButton, view.city === 'sagunto' ? 'Take the yellow bus back to Valencia' : 'Take the yellow bus to Sagunt, where my papers are');
     say(tramButton, view.city === 'paterna' ? 'Take the tram back to Valencia' : 'Take the tram to Paterna, where I work');
     say(doorButton, inLab ? 'Back outside, to the Parc Científic' : 'Step inside I2SysBio, into the lab');
+    // the names shown go over their buildings now, not a frame later: until then they are out of sight, and out of reach of the keyboard
+    place(); placeLabels();
     dirty = true;
   }
   const card = document.createElement('div');
