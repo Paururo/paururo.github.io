@@ -22,8 +22,8 @@ PAGES = ['index.html']
 
 # url(../assets/img/polar.png) or url(../assets/img/polar.png?v=...)
 CSS_REF = re.compile(r'url\((?P<q>["\']?)\.\./(?P<path>[\w./-]+?)(?:\?v=[0-9a-f]+)?(?P=q)\)')
-# href="css/style.css" or src="js/main.js?v=..."
-PAGE_REF = re.compile(r'(?P<attr>(?:href|src)=")(?P<path>(?:css|js)/[\w.-]+\.(?:css|js))(?:\?v=[0-9a-f]+)?"')
+# href="css/style.css", src="js/main.js?v=..." or data-src="js/city.js" (loaded later)
+PAGE_REF = re.compile(r'(?P<attr>(?:href|src|data-src)=")(?P<path>(?:css|js)/[\w.-]+\.(?:css|js))(?:\?v=[0-9a-f]+)?"')
 
 
 def read(path):

@@ -628,34 +628,52 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .pub-loading p, .gh-loading p { font-family: var(--font-hand); font-size: 22px; color: var(--muted); text-align: center; }
 .loading-sprite { animation: hop 0.8s steps(2) infinite; }
 
-.pub-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 26px; align-items: start; margin-top: 10px; }
-.pub-list { display: flex; flex-direction: column; gap: 12px; }
-.pub-item {
-  --pc: var(--terra);
-  display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 14px; padding: 16px 18px 14px;
-  background: var(--card); border: 1.5px solid var(--line); border-radius: 5px; transition: border-color 0.2s, box-shadow 0.2s;
+/* the papers as a departures board: one row each, in a pixel font on a dark board, in either theme */
+.pub-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.pub-tab {
+  font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 13.5px; padding: 2px 11px; color: var(--ink); cursor: pointer;
+  background: var(--card); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); transition: transform 0.1s, box-shadow 0.1s;
 }
-.pub-item:hover { border-color: color-mix(in srgb, var(--ink) 40%, var(--line)); }
-.pub-item--led { border-left: 5px solid var(--pc); }
-.pub-item.cov { --pc: var(--sage); }
-.pub-item.flash { animation: flash 1.6s ease; }
-@keyframes flash { 0%, 40% { box-shadow: 0 0 0 4px var(--hl-ochre); border-color: var(--ink); } 100% { box-shadow: none; } }
-.pub-year { font-family: var(--font-hand); font-weight: 700; font-size: 25px; line-height: 1; color: var(--terra-ink); }
-.pub-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.pub-tab:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.pub-tab[aria-pressed="true"] { background: #15191E; color: #F7D774; }
+.pub-layout { margin-top: 10px; }
+.pub-board {
+  --lcd: #F7D774; padding: 12px 14px 10px; border-radius: 8px; background: #15191E; color: var(--lcd);
+  box-shadow: inset 0 0 0 3px #2B3139, 3px 3px 0 var(--ink); font-family: var(--font-pixel); font-variant-ligatures: none;
+}
+.pub-board-head, .pub-board .pub-item { display: grid; grid-template-columns: 50px minmax(0, 1fr) 180px 52px 78px; gap: 14px; align-items: baseline; }
+.pub-board-head { padding: 0 8px 7px; border-bottom: 1px dashed #3A424C; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C96A3; }
+.pub-board-head span:nth-child(4) { text-align: right; }
+.pub-list { margin: 0; padding: 0; list-style: none; }
+.pub-board .pub-item { position: relative; padding: 8px; border-bottom: 1px dashed #2A3038; cursor: pointer; }
+.pub-board .pub-item:hover, .pub-board .pub-item:focus-visible { background: rgba(247, 215, 116, 0.08); outline: none; }
+.pub-board .pub-item:focus-visible { box-shadow: inset 0 0 0 1.5px var(--lcd); }
+.pub-board .pub-item--led { box-shadow: inset 3px 0 0 #86F09C; }
+.pub-board .pub-item.flash { animation: flash 1.6s ease; }
+@keyframes flash { 0%, 40% { background: rgba(247, 215, 116, 0.28); } 100% { background: none; } }
+.pub-year { font-size: 15px; color: var(--lcd); }
+.pub-content { min-width: 0; }
+.pub-content h3 { font-family: inherit; font-weight: 400; font-size: 15px; line-height: 1.35; color: #FFE9A8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pub-journal { min-width: 0; font-size: 13.5px; color: #9FC3F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.citation-badge { justify-self: end; font-size: 15px; color: #86F09C; }
+.pub-chips { display: flex; justify-content: flex-end; gap: 5px; }
+.pub-chip { padding: 0 5px; border-radius: 3px; font-size: 11px; line-height: 1.5; color: #15191E; }
+.pub-chip--led { background: #86F09C; } .pub-chip--tb { background: #E8958A; } .pub-chip--cov { background: #9DB6E4; }
+/* a row opened: the whole title, who led it, the DOI */
+.pub-more { display: none; }
+.pub-venue { display: none; color: #9FC3F0; }
+.pub-board .pub-item.open h3 { white-space: normal; }
+.pub-board .pub-item.open .pub-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; font-size: 13px; }
+.pub-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .role-badge, .preprint-badge {
   display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-pixel); font-variant-ligatures: none;
   font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 6px; border: 1.5px solid currentColor;
 }
-.role-badge { color: var(--sage-ink); }
-.preprint-badge { color: var(--blue-ink); }
-.pub-content h3 { font-family: var(--font-display); font-weight: 500; font-size: 17px; line-height: 1.4; font-variation-settings: 'SOFT' 100; }
-.pub-journal { font-size: 14px; color: var(--muted); font-style: italic; margin-top: 3px; }
-.pub-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
-.btn-doi { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; font-size: 13px; font-weight: 600; color: var(--ink); border: 1.5px solid var(--line); border-radius: 3px; background: var(--paper); }
-.btn-doi:hover { text-decoration: none; border-color: var(--ink); }
+.role-badge { color: #86F09C; }
+.preprint-badge { color: #9DB6E4; }
+.btn-doi { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px; font-size: 13px; color: #15191E; background: var(--lcd); border-radius: 3px; }
+.btn-doi:hover { text-decoration: none; filter: brightness(1.08); }
 .btn-doi i { font-size: 10px; }
-.citation-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--muted); padding: 2px 8px; border: 1.5px dashed var(--line); }
-.citation-badge i { font-size: 10px; }
 
 .side-card { position: sticky; top: calc(var(--header) + 16px); padding: 16px; background: var(--card); border: 1.5px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); }
 .side-title { font-family: var(--font-pixel); font-variant-ligatures: none; font-weight: 400; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
@@ -681,6 +699,45 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 .bar-count { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12px; color: var(--muted); }
 
 /* ==================== TOOLS ==================== */
+/* the tools as a voxel city (js/city.js): a canvas drawn at a third of its size, blown up in crisp pixels */
+.city { position: relative; margin: 6px 0 14px; }
+.city-stage { position: relative; aspect-ratio: 100 / 56; }
+.city-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; touch-action: pan-y; cursor: grab; }
+/* over the city the names float by their buildings; on a phone they line up under it */
+.city-chips { display: contents; }
+.city-hint { position: absolute; left: 0; bottom: 4px; margin: 0; font-family: var(--font-hand); font-size: 20px; color: var(--muted); pointer-events: none; }
+.city-label {
+  position: absolute; left: 0; top: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; padding: 2px 8px 3px;
+  border: 1.5px solid var(--ink); border-radius: 4px; background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink);
+  font: 600 12px/1.15 var(--font-body); white-space: nowrap; cursor: pointer;
+}
+.city-label::before { content: ''; width: 10px; height: 4px; border-radius: 2px; margin-bottom: 2px; background: var(--c, transparent); }
+.city-label small { display: none; font-size: 10.5px; font-weight: 400; color: var(--muted); }
+.city-label.lit, .city-label:focus-visible { z-index: 2; background: var(--note); }
+.city-label.lit small, .city-label:focus-visible small { display: block; }
+.city-label--red { --c: var(--terra); } .city-label--blue { --c: var(--blue); } .city-label--green { --c: var(--sage); }
+.city-label--ochre { --c: var(--ochre); } .city-label--plum, .city-label--works { --c: var(--plum); } .city-label--hub { --c: var(--ink); }
+.city-ticket {
+  position: absolute; left: 0; top: 0; z-index: 3; width: min(292px, calc(100% - 8px)); padding: 10px 14px 11px 20px;
+  background: var(--note); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px 0 var(--ink);
+  font-size: 13px; line-height: 1.45;
+}
+.city-ticket::before { content: ''; position: absolute; left: 7px; top: 9px; bottom: 9px; border-left: 2px dashed var(--ochre-soft); }
+.city-ticket p { margin: 0; }
+.city-ticket-name b { font-size: 16px; }
+.city-ticket-name span { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 11.5px; color: var(--ochre-ink); }
+.city-ticket-meta { color: var(--muted); font-size: 12px; margin: 1px 0 5px !important; }
+.city-ticket-links { margin-top: 8px !important; display: flex; flex-wrap: wrap; gap: 7px; }
+.city-ticket-links a { font-family: var(--font-pixel); font-variant-ligatures: none; font-size: 12.5px; color: var(--ink); border: 1.5px solid var(--ink); padding: 0 8px; background: var(--card); box-shadow: 2px 2px 0 var(--ink); }
+.city-ticket-links a:hover { text-decoration: none; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.city-ticket-x { position: absolute; right: 6px; top: 3px; border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
+.city-turn { position: absolute; right: 6px; top: 6px; z-index: 2; display: flex; gap: 6px; }
+.city-turn button { width: 32px; height: 30px; font-size: 17px; line-height: 1; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+/* while the city is up, the cards and the repositories wait under a button */
+.city-list-toggle { display: none; margin: 0 auto 8px; }
+.city-on .city-list-toggle { display: table; }
+.city-on .tool-list { display: none; }
+.city-on.list-open .tool-list { display: block; margin-top: 22px; }
 .tool-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 26px 22px; }
 .tool-grid > .tool-card { flex: 0 1 calc((100% - 44px) / 3); min-width: 0; }
 .tool-card {
@@ -1054,7 +1111,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root[data-theme="dark"] .ruler-walker svg, :root[data-theme="dark"] .px-peek svg, :root[data-theme="dark"] .card-px svg { filter: drop-shadow(0 0 6px rgba(92, 201, 92, 0.95)); }
 :root[data-theme="dark"] .px-bug svg { filter: drop-shadow(0 0 5px var(--px-n)); }
 :root[data-theme="dark"] .face-ring path { filter: url(#rough) drop-shadow(0 0 3px var(--terra)); }
-:root[data-theme="dark"] .card, :root[data-theme="dark"] .tool-card, :root[data-theme="dark"] .notebook, :root[data-theme="dark"] .helix-card, :root[data-theme="dark"] .side-card, :root[data-theme="dark"] .letter, :root[data-theme="dark"] .diary-entry, :root[data-theme="dark"] .papers-track, :root[data-theme="dark"] .stop, :root[data-theme="dark"] .gh-card, :root[data-theme="dark"] .pub-item, :root[data-theme="dark"] .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+:root[data-theme="dark"] .card, :root[data-theme="dark"] .tool-card, :root[data-theme="dark"] .notebook, :root[data-theme="dark"] .helix-card, :root[data-theme="dark"] .side-card, :root[data-theme="dark"] .letter, :root[data-theme="dark"] .diary-entry, :root[data-theme="dark"] .papers-track, :root[data-theme="dark"] .stop, :root[data-theme="dark"] .gh-card, :root[data-theme="dark"] .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
 :root[data-theme="dark"] .chromatid, :root[data-theme="dark"] .centromere { stroke: var(--sage); filter: url(#rough) drop-shadow(0 0 4px rgba(45, 226, 230, 0.85)); }
 :root[data-theme="dark"] .ptrack-block.is-led { box-shadow: 0 0 10px var(--pc); }
 :root[data-theme="dark"] .stamp, :root[data-theme="dark"] .stamp-toggle, :root[data-theme="dark"] .role-badge, :root[data-theme="dark"] .preprint-badge, :root[data-theme="dark"] .px-tag { text-shadow: 0 0 8px currentColor; }
@@ -1094,7 +1151,7 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
 :root:not([data-theme="light"]) .ruler-walker svg, :root:not([data-theme="light"]) .px-peek svg, :root:not([data-theme="light"]) .card-px svg { filter: drop-shadow(0 0 6px rgba(92, 201, 92, 0.95)); }
 :root:not([data-theme="light"]) .px-bug svg { filter: drop-shadow(0 0 5px var(--px-n)); }
 :root:not([data-theme="light"]) .face-ring path { filter: url(#rough) drop-shadow(0 0 3px var(--terra)); }
-:root:not([data-theme="light"]) .card, :root:not([data-theme="light"]) .tool-card, :root:not([data-theme="light"]) .notebook, :root:not([data-theme="light"]) .helix-card, :root:not([data-theme="light"]) .side-card, :root:not([data-theme="light"]) .letter, :root:not([data-theme="light"]) .diary-entry, :root:not([data-theme="light"]) .papers-track, :root:not([data-theme="light"]) .stop, :root:not([data-theme="light"]) .gh-card, :root:not([data-theme="light"]) .pub-item, :root:not([data-theme="light"]) .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+:root:not([data-theme="light"]) .card, :root:not([data-theme="light"]) .tool-card, :root:not([data-theme="light"]) .notebook, :root:not([data-theme="light"]) .helix-card, :root:not([data-theme="light"]) .side-card, :root:not([data-theme="light"]) .letter, :root:not([data-theme="light"]) .diary-entry, :root:not([data-theme="light"]) .papers-track, :root:not([data-theme="light"]) .stop, :root:not([data-theme="light"]) .gh-card, :root:not([data-theme="light"]) .experiments .experiment { box-shadow: 0 0 0 1px rgba(166, 108, 255, 0.22), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
 :root:not([data-theme="light"]) .chromatid, :root:not([data-theme="light"]) .centromere { stroke: var(--sage); filter: url(#rough) drop-shadow(0 0 4px rgba(45, 226, 230, 0.85)); }
 :root:not([data-theme="light"]) .ptrack-block.is-led { box-shadow: 0 0 10px var(--pc); }
 :root:not([data-theme="light"]) .stamp, :root:not([data-theme="light"]) .stamp-toggle, :root:not([data-theme="light"]) .role-badge, :root:not([data-theme="light"]) .preprint-badge, :root:not([data-theme="light"]) .px-tag { text-shadow: 0 0 8px currentColor; }
@@ -1178,7 +1235,17 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .topic-tree { width: calc(100% + 24px); margin: 0 -12px; }
   .fan-label { font-size: 23px; }
   .fan-clade { font-size: 17px; }
-  .pub-item { grid-template-columns: 1fr; gap: 6px; }
+  .pub-board { padding: 8px 8px 6px; }
+  .pub-board-head { display: none; }
+  .pub-board .pub-item { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "y t c" "y h h"; gap: 3px 10px; padding: 9px 6px; }
+  .pub-board .pub-year { grid-area: y; }
+  .pub-board .pub-content { grid-area: t; }
+  .pub-board .citation-badge { grid-area: c; }
+  .pub-board .pub-chips { grid-area: h; justify-content: flex-start; }
+  .pub-board .pub-journal { display: none; }
+  .pub-board .pub-content h3 { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .pub-board .pub-item.open h3 { display: block; }
+  .pub-board .pub-item.open .pub-venue { display: inline; }
   .drawings > .print { flex-basis: 100%; }
   .tool-grid > .tool-card { flex-basis: 100%; }
   .pub-search-wrap { flex-basis: 100%; }
@@ -1188,6 +1255,12 @@ mark.hl { color: inherit; padding: 0 0.15em; -webkit-box-decoration-break: clone
   .print:nth-child(n) { transform: none; }
   .ruler-feature span { display: none; }
   .coco { right: 8px; }
+  .city-stage { aspect-ratio: 100 / 72; }
+  .city-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 7px; margin-top: 8px; }
+  .city-label { position: static; transform: none !important; }
+  .city-label small, .city-label.lit small, .city-label:focus-visible small { display: none; }
+  .city-hint { position: static; margin: 4px 0 0; text-align: center; font-size: 18px; line-height: 1.2; }
+  .city-ticket { position: relative; width: 100%; margin-top: 12px; transform: none !important; }
   .bench { --px: 2px; --mpx: 3px; height: 330px; }
   .bench-desk { height: 100px; }
   .thing { bottom: 113px; }

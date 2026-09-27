@@ -212,6 +212,24 @@ const HELICES = [
 
 // ---------- Lineage colours from mycolorsTB (classicTB palette) ----------
 // https://github.com/PathoGenOmics-Lab/mycolorsTB
+// The tool city (js/city.js): a stop per building, in the order the lines
+// run. The tag is the building's name in the city; line, the colour of its
+// label; sub, what it answers, shown when you point at it.
+const CITY_STOPS = [
+  { tag: 'reads', name: 'raw reads', line: 'none', sub: 'the sequencer' },
+  { tag: 'BAMpiro', name: 'BAMpiro', line: 'hub', sub: 'the central station' },
+  { tag: 'pathotypr', name: 'pathotypr', line: 'red', sub: 'who is it, what resists' },
+  { tag: 'get_MNV', name: 'get_MNV', line: 'blue', sub: 'codons, together' },
+  { tag: 'eskaks', name: 'eskaks', line: 'blue', sub: 'dN/dS, pN/pS' },
+  { tag: 'snpick', name: 'snpick', line: 'green', sub: 'variable sites' },
+  { tag: 'IQ-TREE', name: 'IQ-TREE', line: 'ext', sub: 'the tree, not mine' },
+  { tag: 'distree', name: 'distree', line: 'green', sub: 'tree distances' },
+  { tag: 'fstic', name: 'fstic', line: 'ochre', sub: 'mixed infections' },
+  { tag: 'mycolorsTB', name: 'mycolorsTB', line: 'plum', sub: 'lineage colours' },
+  { tag: 'karyon', name: 'karyon', line: 'works', sub: 'under works' },
+  { tag: 'depot', name: 'the depot', line: 'depot', sub: 'older and smaller' },
+];
+
 const MYCOLORS_TB = {
   L1: '#ff3091', L2: '#001aff', L3: '#8a0bd2', L4: '#ff0000', L5: '#995200', L6: '#1eb040', L7: '#fbff00',
   L8: '#ff9d00', L9: '#37ff30', L10: '#8fbda1', A1: '#d1ae00', A2: '#8ef5c8', A3: '#73c2ff', A4: '#ff9cdb',

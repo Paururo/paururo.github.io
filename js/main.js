@@ -67,7 +67,7 @@ const PAGE_PARTS = [
   'initKoiPond', 'initPondControls', 'initBench', 'initLetterCup',
   'initCoconut', 'initPolar', 'initHelices', 'initGenomeRuler', 'scatterBugs',
   'initStatBubbles', 'initPubFilters', 'fetchPublications', 'fetchGitHubRepos',
-  'fetchToolDownloads',
+  'initToolCity', 'fetchToolDownloads',
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -188,6 +188,73 @@ function initSpeedControl() {
     tickerState.speed = 0.5 * animSpeed;
     show();
   });
+}
+
+// ==================== THE TOOL CITY ====================
+// The tools as a voxel city (js/city.js, drawn with three.js). It loads as
+// the section comes near, where WebGL works; the cards and the list of
+// repositories wait under a button for anyone who wants a list.
+const CITY_LINES = {
+  pathotypr: 'red line', get_MNV: 'blue line', eskaks: 'blue line', snpick: 'green line', distree: 'green line',
+  fstic: 'yellow line', mycolorsTB: 'purple line', BAMpiro: 'where every line meets',
+};
+// what a building's ticket says, with today's numbers
+function toolTicket(tag) {
+  const tool = FEATURED_TOOLS.find(t => t.name === tag);
+  if (tool) {
+    const dl = tool.bioconda && toolDownloads[tool.bioconda];
+    const repo = ghAllRepos.find(r => r.name.toLowerCase() === tool.name.toLowerCase());
+    return {
+      name: tool.name,
+      kind: [tool.lang, tool.bioconda ? 'Bioconda' : tool.cran ? 'CRAN' : ''].filter(Boolean).join(' · '),
+      meta: [dl && `${dl} downloads`, repo && `${repo.stargazers_count} ★`, CITY_LINES[tool.name]].filter(Boolean).join(' · '),
+      desc: tool.desc,
+      links: [tool.docs && { label: 'docs', href: tool.docs }, { label: 'repo', href: tool.repo }].filter(Boolean),
+    };
+  }
+  if (tag === 'reads') return { name: 'raw reads', kind: 'the sequencer', desc: 'Where every line starts: short reads, straight off the sequencer, on their way down the cables to BAMpiro.' };
+  if (tag === 'IQ-TREE') return { name: 'IQ-TREE', kind: 'not mine', desc: 'The tree builder the green line runs through: snpick gets the alignments ready for it, and distree measures the trees it grows.', links: [{ label: 'IQ-TREE', href: 'https://iqtree.github.io/' }] };
+  if (tag === 'karyon') return { name: 'karyon', kind: 'under works', desc: 'Genomic track plots in Rust, still being built. Come back soon.' };
+  if (tag === 'depot') {
+    const shown = new Set(FEATURED_TOOLS.map(t => t.name.toLowerCase()).concat('karyon'));
+    const rest = ghAllRepos.filter(r => !shown.has(r.name.toLowerCase()));
+    return {
+      name: 'the depot', kind: 'older and smaller',
+      desc: rest.length ? 'Scripts and small tools from earlier projects, resting between trips:' : 'Scripts and small tools from earlier projects; the list under the city has them all.',
+      links: rest.map(r => ({ label: r.name, href: r.html_url })),
+    };
+  }
+  return null;
+}
+function initToolCity() {
+  const box = document.getElementById('toolCity');
+  const section = document.getElementById('tools');
+  const toggle = document.getElementById('toolListToggle');
+  const chips = document.getElementById('cityChips');
+  if (!box || !section || !toggle || !chips || !('IntersectionObserver' in window)) return;
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
+  // the city takes its room now, so nothing below it moves when it arrives
+  chips.innerHTML = CITY_STOPS.map(s => `<button type="button" class="city-label city-label--${s.line}" data-tag="${s.tag}" data-line="${s.line}" aria-label="${escapeHtml(`${s.name}: ${s.sub}`)}"><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.sub)}</small></button>`).join('');
+  box.hidden = false;
+  section.classList.add('city-on');
+  toggle.addEventListener('click', () => {
+    const open = section.classList.toggle('list-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.textContent = open ? 'hide the list' : 'all tools and repositories, as a list';
+  });
+  const start = () => import(new URL(box.dataset.src, document.baseURI).href)
+    .then(m => { box.city = m.initCity(box, { lineages: Object.values(MYCOLORS_TB), ticket: toolTicket }); })
+    .catch(err => {
+      // no city after all: the list comes back
+      console.error('the tool city did not start:', err);
+      box.hidden = true;
+      section.classList.remove('city-on');
+    });
+  const io = new IntersectionObserver(es => {
+    if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); }
+  }, { rootMargin: '900px 0px' });
+  io.observe(section);
 }
 
 // ==================== EXPANDABLE HELIX CARDS ====================
@@ -463,36 +530,18 @@ function pathogenOf(pub) {
   return 'other';
 }
 
-const KEYWORD_PATTERNS = [
-  { pattern: /sars.?cov.?2|covid.?19/i, label: 'SARS-CoV-2', icon: 'fa-virus', color: 'var(--sage)' },
-  { pattern: /tuberculosis|\bMTB\b|\btb\b/i, label: 'Tuberculosis', icon: 'fa-bacterium', color: 'var(--terra)' },
-  { pattern: /mycobacterium/i, label: 'Mycobacterium', icon: 'fa-bacterium', color: 'var(--terra-soft)' },
-  { pattern: /phylogen/i, label: 'Phylogenetics', icon: 'fa-sitemap', color: 'var(--blue)' },
-  { pattern: /genom/i, label: 'Genomics', icon: 'fa-dna', color: 'var(--ochre)' },
-  { pattern: /epidemiol|surveillance/i, label: 'Epidemiology', icon: 'fa-chart-line', color: 'var(--plum)' },
-  { pattern: /bioinformatics|pipeline|workflow/i, label: 'Bioinformatics', icon: 'fa-laptop-code', color: 'var(--blue-soft)' },
-  { pattern: /variant|mutation|lineage/i, label: 'Variants', icon: 'fa-code-branch', color: 'var(--sage-soft)' },
-  { pattern: /resistance|antimicrobial|antibiotic/i, label: 'AMR', icon: 'fa-shield-halved', color: 'var(--terra)' },
-  { pattern: /sequenc/i, label: 'Sequencing', icon: 'fa-microscope', color: 'var(--ochre-soft)' },
-];
-function extractKeywords(pub) {
-  const text = `${pub.title} ${pub.journal}`;
-  const kws = [];
-  for (const { pattern, label } of KEYWORD_PATTERNS) if (pattern.test(text) && !kws.includes(label)) kws.push(label);
-  return kws;
-}
-
 // ==================== PUBLICATIONS ====================
-let pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+let pubFilterState = { year: 'all', topic: '', search: '', led: false, sort: '' };
 let pubStaticFiltersBound = false;
-let pubData = { pubs: [], keywords: [] };
+let pubData = { pubs: [] };
+const TOPIC_NAMES = { tb: 'TB', cov: 'SARS-CoV-2' };
 
 function pubMatches(i, ignore = '') {
-  const { year, keyword, search, led } = pubFilterState;
+  const { year, topic, search, led } = pubFilterState;
   const pub = pubData.pubs[i];
   const q = search.toLowerCase().trim();
   if (ignore !== 'year' && year !== 'all' && String(pub.year) !== year) return false;
-  if (ignore !== 'keyword' && keyword !== 'all' && !pubData.keywords[i].includes(keyword)) return false;
+  if (ignore !== 'topic' && topic && pathogenOf(pub) !== topic) return false;
   if (led && !pubRole(pub.doi)) return false;
   if (q) {
     const text = `${pub.title} ${pub.journal} ${preprintServer(pub.doi)} ${pubRole(pub.doi) || ''}`.toLowerCase();
@@ -510,21 +559,35 @@ function applyPubFilters() {
   });
   const none = document.getElementById('pubNoResults');
   if (none) none.style.display = visible === 0 && pubData.pubs.length ? 'block' : 'none';
+  // most cited first, or newest first as they come
+  const list = document.getElementById('pubList');
+  if (list) {
+    const key = pubFilterState.sort === 'cited' ? li => -(+li.dataset.cit) : li => +li.dataset.idx;
+    const rows = [...list.children];
+    const sorted = rows.slice().sort((a, b) => key(a) - key(b) || +a.dataset.idx - +b.dataset.idx);
+    if (sorted.some((li, i) => li !== rows[i])) sorted.forEach(li => list.appendChild(li));
+  }
+  const { year, topic, search, led, sort } = pubFilterState;
+  document.querySelectorAll('.pub-tab[data-tab]').forEach(tab => {
+    const t = tab.dataset.tab;
+    const on = t === 'all' ? (year === 'all' && !topic && !led && !sort && !search.trim()) : t === 'cited' ? sort === 'cited' : topic === t;
+    tab.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   updatePubStatus(visible);
   updateTrack();
-  updateTopicChart();
 }
 
 // What is filtered, and one button to undo it all
 function updatePubStatus(visible) {
   const el = document.getElementById('pubStatus');
   if (!el) return;
-  const { year, keyword, search, led } = pubFilterState;
+  const { year, topic, search, led, sort } = pubFilterState;
   const active = [
     year !== 'all' ? year : '',
-    keyword !== 'all' ? keyword : '',
-    led ? 'first author' : '',
+    topic ? TOPIC_NAMES[topic] : '',
+    led ? 'led by me' : '',
     search.trim() ? `"${search.trim()}"` : '',
+    sort === 'cited' ? 'most cited first' : '',
   ].filter(Boolean);
   el.hidden = !active.length;
   if (!active.length) { el.innerHTML = ''; return; }
@@ -535,7 +598,7 @@ function updatePubStatus(visible) {
 }
 
 function clearPubFilters() {
-  pubFilterState = { year: 'all', keyword: 'all', search: '', led: false };
+  pubFilterState = { year: 'all', topic: '', search: '', led: false, sort: '' };
   const search = document.getElementById('pubSearch');
   if (search) search.value = '';
   document.getElementById('pubLedToggle')?.setAttribute('aria-pressed', 'false');
@@ -543,7 +606,7 @@ function clearPubFilters() {
 }
 
 function setYear(y) { pubFilterState.year = pubFilterState.year === y ? 'all' : y; applyPubFilters(); }
-function setKeyword(k) { pubFilterState.keyword = pubFilterState.keyword === k ? 'all' : k; applyPubFilters(); }
+function setTopic(t) { pubFilterState.topic = pubFilterState.topic === t ? '' : t; applyPubFilters(); }
 
 function initPubFilters() {
   if (pubStaticFiltersBound) return;
@@ -566,6 +629,20 @@ function initPubFilters() {
     if (!e.target.closest('[data-clear]')) return;
     clearPubFilters();
     document.getElementById('pubSearch')?.focus();
+  });
+  // the buttons over the board: everything, a pathogen, or the most cited first
+  document.querySelectorAll('.pub-tab[data-tab]').forEach(tab => tab.addEventListener('click', () => {
+    const t = tab.dataset.tab;
+    if (t === 'all') clearPubFilters();
+    else if (t === 'cited') { pubFilterState.sort = pubFilterState.sort === 'cited' ? '' : 'cited'; applyPubFilters(); }
+    else setTopic(t);
+  }));
+  // a press on a row opens it: the whole title, who led it, the DOI
+  const list = document.getElementById('pubList');
+  const flip = li => { const open = !li.classList.contains('open'); li.classList.toggle('open', open); li.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+  list?.addEventListener('click', e => { if (e.target.closest('a')) return; const li = e.target.closest('.pub-item'); if (li) flip(li); });
+  list?.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('pub-item')) { e.preventDefault(); flip(e.target); }
   });
 }
 
@@ -635,29 +712,6 @@ function updateTrack() {
   });
 }
 
-function updateTopicChart() {
-  const container = document.getElementById('chartTopicBars');
-  if (!container || !pubData.pubs.length) return;
-  const counts = {};
-  pubData.pubs.forEach((p, i) => { if (pubMatches(i, 'keyword')) pubData.keywords[i].forEach(k => { counts[k] = (counts[k] || 0) + 1; }); });
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const max = Math.max(...sorted.map(e => e[1]), 1);
-  const active = pubFilterState.keyword;
-  container.innerHTML = sorted.map(([label, count]) => {
-    const kp = KEYWORD_PATTERNS.find(p => p.label === label) || {};
-    const dim = active !== 'all' && active !== label;
-    return `<div class="bar-row${active === label ? ' active' : ''}" role="button" tabindex="0" data-topic="${label}" aria-pressed="${active === label}" aria-label="${label}, ${count} papers">
-      <span class="bar-icon"><i class="fas ${kp.icon || 'fa-tag'}" aria-hidden="true"></i></span>
-      <span class="bar-label">${label}</span>
-      <span class="bar-track"><span class="bar-fill${dim ? ' dimmed' : ''}" style="display:block;width:${(count / max) * 100}%;--bc:${kp.color || 'var(--terra)'}"></span></span>
-      <span class="bar-count">${count}</span></div>`;
-  }).join('');
-  container.querySelectorAll('.bar-row').forEach(row => {
-    row.addEventListener('click', () => setKeyword(row.dataset.topic));
-    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKeyword(row.dataset.topic); } });
-  });
-}
-
 function parseOrcidWorks(groups) {
   const pubs = groups.map(g => {
     const s = g['work-summary'][0];
@@ -676,7 +730,7 @@ function parseOrcidWorks(groups) {
 }
 
 function renderPublications(pubs, citations) {
-  pubData = { pubs, keywords: pubs.map(extractKeywords) };
+  pubData = { pubs };
   statData.pubs = pubs.length;
   animateNumber('statPubs', pubs.length);
   document.querySelector('#pubCountBadge b').textContent = pubs.length;
@@ -693,25 +747,28 @@ function renderPublications(pubs, citations) {
     const isPreprint = pub.type === 'preprint';
     const venue = pub.journal || (isPreprint ? preprintServer(pub.doi) : '');
     const cit = citations && pub.doi && citations[pub.doi] !== undefined ? citations[pub.doi] : null;
+    const topic = pathogenOf(pub);
     const citHTML = pub.doi
-      ? `<span class="citation-badge" data-doi="${escapeHtml(pub.doi)}" title="Citations (Semantic Scholar)"><i class="fas fa-quote-right" aria-hidden="true"></i> ${cit !== null ? cit : '...'}</span>`
-      : '';
+      ? `<span class="citation-badge" data-doi="${escapeHtml(pub.doi)}" title="Citations (Semantic Scholar)">${cit !== null ? cit : '...'}</span>`
+      : '<span class="citation-badge"></span>';
     const badges = [
       role ? `<span class="role-badge">${role}</span>` : '',
       isPreprint ? '<span class="preprint-badge">preprint</span>' : '',
     ].join('');
     return `
-      <li class="pub-item ${pathogenOf(pub)}${role ? ' pub-item--led' : ''}" data-idx="${i}" id="pub-${i}">
+      <li class="pub-item ${topic}${role ? ' pub-item--led' : ''}" data-idx="${i}" data-cit="${cit ?? -1}" id="pub-${i}" tabindex="0" aria-expanded="false">
         <span class="pub-year">${pub.year || '?'}</span>
         <div class="pub-content">
-          ${badges ? `<div class="pub-badges">${badges}</div>` : ''}
           <h3>${pub.title}</h3>
-          ${venue ? `<p class="pub-journal">${venue}</p>` : ''}
-          <div class="pub-meta">
+          <div class="pub-more">
+            ${badges ? `<span class="pub-badges">${badges}</span>` : ''}
+            ${venue ? `<span class="pub-venue">${venue}</span>` : ''}
             ${pub.doi ? `<a href="https://doi.org/${pub.doi}" target="_blank" rel="noopener" class="btn-doi"><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> DOI</a>` : ''}
-            ${citHTML}
           </div>
         </div>
+        <span class="pub-journal">${venue}</span>
+        ${citHTML}
+        <span class="pub-chips">${role ? '<span class="pub-chip pub-chip--led">led</span>' : ''}${TOPIC_NAMES[topic] ? `<span class="pub-chip pub-chip--${topic}">${topic === 'cov' ? 'CoV' : 'TB'}</span>` : ''}</span>
       </li>`;
   }).join('');
 
@@ -760,10 +817,15 @@ async function fetchAllCitations(pubs) {
       const count = res.ok ? ((await res.json()).citationCount || 0) : 0;
       citations[pub.doi] = count;
       total += count;
-      if (badge) badge.innerHTML = `<i class="fas fa-quote-right" aria-hidden="true"></i> ${count}`;
+      if (badge) {
+        badge.textContent = count;
+        badge.closest('.pub-item').dataset.cit = count;
+        // with the most cited first, each new count may move a row up
+        if (pubFilterState.sort === 'cited') applyPubFilters();
+      }
     } catch {
       citations[pub.doi] = 0;
-      if (badge) badge.innerHTML = '<i class="fas fa-quote-right" aria-hidden="true"></i> --';
+      if (badge) badge.textContent = '--';
     }
   }
   cacheSet('s2_citations', citations);
