@@ -26,14 +26,12 @@ const SELECTED_WORK = [
   },
   {
     year: 2026,
-    venue: 'bioRxiv, accepted in <em>Emerging Infectious Diseases</em>',
-    server: 'bioRxiv',
-    preprint: true,
+    venue: 'Emerging Infectious Diseases',
     role: 'First author',
     pathogen: 'tb',
-    title: 'Pathotypr: harmonised MTBC lineage assignment and resistance-associated variant detection for genomic surveillance',
-    summary: 'An alignment-free tool that assigns all 14 recognised MTBC lineages and flags resistance-associated variants in about a second per sample, with 100% root-lineage agreement with TB-Profiler across 88,071 samples.',
-    doi: '10.64898/2026.03.24.714002',
+    title: 'Alignment-free tool for assemblies and reads in genomic surveillance of tuberculosis',
+    summary: 'Pathotypr types lineages from assemblies or reads with 2,145 markers derived from 26,813 genomes; across 88,071 samples it gave the same major lineage as TB-Profiler wherever the two could be compared, covered uncommon lineages better and detected resistance markers.',
+    doi: '10.3201/eid3211.261074',
     links: [{ url: 'https://github.com/PathoGenOmics-Lab/pathotypr', label: 'Code', icon: 'fab fa-github' }],
   },
   {
@@ -114,6 +112,16 @@ const FEATURED_TOOLS = [
 
 // ---------- News ----------
 const BLOG_POSTS = [
+  {
+    date: '2026-10-18',
+    category: 'Paper',
+    title: 'Pathotypr, now in Emerging Infectious Diseases',
+    body: 'Pathotypr, our alignment-free tool for typing the <em>M. tuberculosis</em> complex from assemblies or reads, is out in <em>Emerging Infectious Diseases</em>. Incomplete lineage schemes can misclassify isolates, so Pathotypr works from 2,145 markers derived from 26,813 genomes. Across 88,071 samples it improved concordance, covered uncommon lineages better and detected resistance markers, and it gave the same major lineage as TB-Profiler for every sample the two could be compared on.',
+    links: [
+      { url: 'https://doi.org/10.3201/eid3211.261074', label: 'Read the paper', icon: 'fas fa-file-alt' },
+      { url: 'https://github.com/PathoGenOmics-Lab/pathotypr', label: 'Source code', icon: 'fab fa-github' },
+    ],
+  },
   {
     date: '2026-09-23',
     category: 'Paper',
@@ -232,7 +240,7 @@ const CITY_STOPS = [
 // paper I led. The tag is the building; doi, its paper in SELECTED_WORK; line,
 // the colour of its label (TB or SARS-CoV-2); sub, what it found.
 const SAGUNTO_STOPS = [
-  { tag: 'castell', doi: '10.64898/2026.03.24.714002', name: 'Pathotypr, 2026', line: 'tb', sub: 'the castle keeps watch' },
+  { tag: 'castell', doi: '10.3201/eid3211.261074', name: 'Pathotypr, 2026', line: 'tb', sub: 'the castle keeps watch' },
   { tag: 'masia', doi: '10.1099/mgen.0.001826', name: 'Host compatibility, 2026', line: 'tb', sub: 'people and cattle' },
   { tag: 'hospital', doi: '10.64898/2026.03.31.26346553', name: 'Wastewater, 2026', line: 'cov', sub: 'KP.3, three months early' },
   { tag: 'alt-forn', doi: '10.1371/journal.ppat.1010631', name: 'PLOS Pathogens, 2022', line: 'cov', sub: 'A222V opens the spike' },
